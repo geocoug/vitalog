@@ -66,6 +66,7 @@ jobs:
             - name: Build sdist + wheel
               run: |
                   uv build
+                  uv sync --all-extras
                   uv run twine check dist/*
             - name: Upload dist artifact
               uses: actions/upload-artifact@v4
