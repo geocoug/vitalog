@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vitalog"
-version = "0.2.2"
+version = "0.2.3"
 description = "Health data CLI — ETL Apple Health & SleepCycle into DuckDB, generate AI narratives, and build interactive dashboards."
 readme = { file = "README.md", content-type = "text/markdown" }
 license = { file = "LICENSE" }
@@ -97,7 +97,7 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [tool.bumpversion]
-current_version = "0.2.2"
+current_version = "0.2.3"
 commit = false
 tag = false
 
