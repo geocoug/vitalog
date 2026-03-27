@@ -34,7 +34,7 @@ class TestLoadApple:
         missing = tmp_path / "nonexistent.zip"
         result = runner.invoke(app, ["load", "apple", "--file", str(missing)])
         assert result.exit_code == 1
-        assert "not found" in result.output.replace("\n", " ")
+        assert "not found" in " ".join(result.output.split())
 
 
 class TestLoadAll:
@@ -46,7 +46,7 @@ class TestLoadAll:
             ["load", "all", "--apple", str(tmp_path / "missing.zip"), "--sleep", str(csv)],
         )
         assert result.exit_code == 1
-        assert "not found" in result.output.replace("\n", " ")
+        assert "not found" in " ".join(result.output.split())
 
     def test_missing_sleep_file(self, tmp_path: Path) -> None:
         import zipfile
@@ -59,7 +59,7 @@ class TestLoadAll:
             ["load", "all", "--apple", str(zip_path), "--sleep", str(tmp_path / "missing.csv")],
         )
         assert result.exit_code == 1
-        assert "not found" in result.output.replace("\n", " ")
+        assert "not found" in " ".join(result.output.split())
 
     def test_invalid_zip(self, tmp_path: Path) -> None:
         fake_zip = tmp_path / "bad.zip"
@@ -71,7 +71,7 @@ class TestLoadAll:
             ["load", "all", "--apple", str(fake_zip), "--sleep", str(csv)],
         )
         assert result.exit_code == 1
-        assert "not a valid ZIP" in result.output.replace("\n", " ")
+        assert "not a valid ZIP" in " ".join(result.output.split())
 
     def test_non_csv_sleep(self, tmp_path: Path) -> None:
         import zipfile
@@ -93,7 +93,7 @@ class TestLoadAll:
         missing = tmp_path / "nonexistent.zip"
         result = runner.invoke(app, ["load", "all", "--apple", str(missing)])
         assert result.exit_code == 1
-        assert "not found" in result.output.replace("\n", " ")  # fails on missing file, not missing --sleep flag
+        assert "not found" in " ".join(result.output.split())  # fails on missing file, not missing --sleep flag
 
 
 class TestLoadSleep:
@@ -101,7 +101,7 @@ class TestLoadSleep:
         missing = tmp_path / "nonexistent.csv"
         result = runner.invoke(app, ["load", "sleep", "--file", str(missing)])
         assert result.exit_code == 1
-        assert "not found" in result.output.replace("\n", " ")
+        assert "not found" in " ".join(result.output.split())
 
 
 class TestNarrative:
