@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+.ruff_cache/
+.mypy_cache/
+
+# uv / venv
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Testing
+.pytest_cache/
+.coverage
+coverage.xml
+.tox/
+htmlcov/
+
+# Distribution
+*.whl
+*.tar.gz
+
+# Project data (user-specific, not tracked)
+data/
+.env
+examples/
+*.html
+!src/vitalog/dashboard/*.html
+*.duckdb
+
+# Claude
+.claude/
+CLAUDE.md

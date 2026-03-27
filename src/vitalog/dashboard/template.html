@@ -1,0 +1,2643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vitalog Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='0'%3E%3Cstop offset='0%25' stop-color='%234CAF50'/%3E%3Cstop offset='50%25' stop-color='%23E91E63'/%3E%3Cstop offset='100%25' stop-color='%23673AB7'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpolyline points='2,18 8,18 11,14 14,10 17,18 20,22 24,4 28,18 30,18' fill='none' stroke='url(%23g)' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+    <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* Cool White — high-luminance white cards, cool undertone pushes warm chart colors forward */
+        :root {
+            --bg: #f4f6f9;
+            --card: #ffffff;
+            --card-glass: rgba(255,255,255,0.85);
+            --card-border: rgba(220,226,236,0.5);
+            --text: #1a1d23;
+            --muted: #6c7380;
+            --border: #e3e7ee;
+            --shadow: 0 1px 3px rgba(26,29,35,0.05), 0 1px 2px rgba(26,29,35,0.03);
+            --shadow-lg: 0 4px 8px rgba(26,29,35,0.07), 0 2px 4px rgba(26,29,35,0.04);
+            --radius: 14px;
+            --accent: #4a7cbe;
+            --table-hover: #f7f8fb;
+            --table-header: #f7f8fb;
+            --grid-line: #eceef3;
+            --axis-text: #6c7380;
+        }
+        [data-theme="dark"] {
+            --bg: #12141a;
+            --card: #1c1f28;
+            --card-glass: rgba(28,31,40,0.9);
+            --card-border: rgba(55,60,75,0.4);
+            --text: #e4e6eb;
+            --muted: #8b90a0;
+            --border: #2d3040;
+            --shadow: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+            --shadow-lg: 0 4px 8px rgba(0,0,0,0.45), 0 2px 4px rgba(0,0,0,0.3);
+            --table-hover: #1c1f28;
+            --table-header: #1c1f28;
+            --grid-line: #2d3040;
+            --axis-text: #8b90a0;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 32px 24px;
+            line-height: 1.5;
+        }
+
+        /* Banner — gradient header with frosted glass effect */
+        .banner {
+            background: linear-gradient(135deg, #5e81ac 0%, #81a1c1 40%, #88c0d0 70%, #8fbcbb 100%);
+            border-radius: var(--radius) var(--radius) 0 0;
+            padding: 24px 28px 0;
+            margin-bottom: 28px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(94,129,172,0.25), 0 2px 8px rgba(94,129,172,0.15);
+        }
+        .banner::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse at 20% 50%, rgba(143,188,187,0.4) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(136,192,208,0.3) 0%, transparent 40%);
+            pointer-events: none;
+        }
+        .banner::after {
+            content: '';
+            position: absolute;
+            top: -50%; right: -20%;
+            width: 60%; height: 200%;
+            background: radial-gradient(ellipse, rgba(255,255,255,0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        [data-theme="dark"] .banner {
+            background: linear-gradient(135deg, #2e3440 0%, #3b4252 35%, #434c5e 65%, #4c566a 100%);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3);
+        }
+        [data-theme="dark"] .banner::before {
+            background:
+                radial-gradient(ellipse at 20% 50%, rgba(94,129,172,0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(136,192,208,0.1) 0%, transparent 40%);
+        }
+        .banner-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 18px;
+            position: relative;
+            z-index: 1;
+        }
+        .banner-title {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .banner h1 {
+            font-size: 1.6rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            color: #fff;
+            margin: 0;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.15);
+        }
+        .banner .date-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(255,255,255,0.18);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
+            padding: 4px 14px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: rgba(255,255,255,0.9);
+            letter-spacing: 0.3px;
+        }
+        [data-theme="dark"] .banner .date-badge {
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(255,255,255,0.1);
+        }
+
+        /* Tab Bar — real tab shapes */
+        .tab-bar {
+            display: flex;
+            gap: 3px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            position: relative;
+            z-index: 1;
+            margin-bottom: -1px;  /* overlap banner bottom edge */
+        }
+        .tab-bar::-webkit-scrollbar { display: none; }
+        .tab-btn {
+            padding: 9px 18px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            background: rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.7);
+            border-radius: 10px 10px 0 0;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+            font-family: inherit;
+            letter-spacing: 0.2px;
+            position: relative;
+        }
+        .tab-btn .tab-emoji {
+            margin-right: 5px;
+            font-size: 0.9em;
+        }
+        .tab-btn:hover {
+            background: rgba(255,255,255,0.15);
+            color: rgba(255,255,255,0.95);
+        }
+        .tab-btn.active {
+            background: var(--bg);
+            color: var(--text);
+            font-weight: 700;
+        }
+        [data-theme="dark"] .tab-btn.active {
+            background: var(--bg);
+            color: var(--text);
+        }
+        .tab-content { display: none; opacity: 0; transition: opacity 0.25s ease; }
+        .tab-content.active { display: block; opacity: 1; }
+
+        /* Hero Cards */
+        .hero-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .hero-card {
+            background: var(--card-glass);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius);
+            padding: 22px 16px;
+            box-shadow: var(--shadow-lg);
+            text-align: center;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .hero-card:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
+        .hero-card .value { font-size: 2rem; font-weight: 800; line-height: 1.1; margin-bottom: 4px; }
+        .hero-card .label { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .hero-delta { font-size: 0.6em; font-weight: 600; margin-left: 6px; vertical-align: middle; border-radius: 6px; padding: 1px 6px; }
+        .hero-delta.good { color: #22c55e; background: rgba(34,197,94,0.1); }
+        .hero-delta.bad { color: #ef4444; background: rgba(239,68,68,0.1); }
+        .info-dot {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 14px; height: 14px; border-radius: 50%;
+            background: var(--border); color: var(--muted);
+            font-size: 9px; font-weight: 700; margin-left: 4px;
+            cursor: help; vertical-align: middle; line-height: 1;
+        }
+
+        /* Stat Cards */
+        .stat-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: var(--card);
+            border-radius: 10px;
+            padding: 14px 12px;
+            box-shadow: var(--shadow);
+            text-align: center;
+            border-left: none;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(180deg, var(--stat-color, var(--border)), transparent);
+        }
+        .stat-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-lg); }
+        .pr-card { padding: 18px 14px; }
+        .stat-card .value { font-size: 1.4rem; font-weight: 700; line-height: 1.2; }
+        .stat-card .label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; margin-top: 2px; }
+
+        /* Profile Banner */
+        .banner-right { display: flex; align-items: center; gap: 10px; }
+        .profile-hud {
+            background: rgba(255,255,255,0.12);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 10px;
+            padding: 6px 14px;
+            display: flex;
+            gap: 14px;
+        }
+        .phud-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: rgba(255,255,255,0.9);
+            white-space: nowrap;
+        }
+        [data-theme="dark"] .profile-hud {
+            background: rgba(255,255,255,0.06);
+            border-color: rgba(255,255,255,0.1);
+        }
+
+        /* Card Groups (collapsible) */
+        .card-group { margin-bottom: 20px; }
+        .card-group-label {
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--muted);
+            margin-bottom: 8px;
+            padding-left: 2px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .card-group-label::before { content: '\25BE '; font-size: 0.9em; }
+        .card-group.collapsed .card-group-label::before { content: '\25B8 '; }
+        .card-group.collapsed .stat-row { display: none; }
+
+        /* Chart Grid */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .chart-card {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 16px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            transition: box-shadow 0.2s ease;
+        }
+        .chart-card:hover { box-shadow: var(--shadow-lg); }
+        .full-width { grid-column: 1 / -1; }
+
+        /* Section Headers */
+        .section-label {
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--muted);
+            margin: 28px 0 14px;
+        }
+
+        /* Monthly Table */
+        .table-wrap {
+            background: var(--card);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow-x: auto;
+            margin-bottom: 24px;
+        }
+        .monthly-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+        .monthly-table th {
+            background: var(--table-header);
+            padding: 12px 14px;
+            text-align: right;
+            border-bottom: 2px solid var(--border);
+            white-space: nowrap;
+            font-weight: 600;
+            color: var(--muted);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .monthly-table th:first-child { text-align: left; }
+        .monthly-table td { padding: 10px 14px; text-align: right; border-bottom: 1px solid var(--grid-line); }
+        .monthly-table td:first-child { text-align: left; font-weight: 600; }
+        .monthly-table tbody tr:hover { background: var(--table-hover); }
+        .above-avg { color: #16a34a; }
+        .below-avg { color: #dc2626; }
+        .table-pagination {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 14px;
+            font-size: 0.82rem;
+            color: var(--muted);
+        }
+        .table-pagination button {
+            padding: 5px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--card);
+            color: var(--text);
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .table-pagination button:hover { border-color: var(--accent); color: var(--accent); }
+        .table-pagination button:disabled { opacity: 0.35; cursor: default; border-color: var(--border); color: var(--muted); }
+
+        /* Map */
+        .map-container {
+            background: var(--card);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 20px;
+        }
+        .map-controls {
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .map-controls label { font-weight: 700; font-size: 0.92rem; color: var(--text); }
+        .map-controls select {
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.92rem;
+            font-family: inherit;
+            background: var(--card);
+            color: var(--text);
+            cursor: pointer;
+            min-width: 340px;
+            max-width: 100%;
+        }
+        .map-controls select:focus {
+            outline: 2px solid var(--accent);
+            outline-offset: -1px;
+        }
+        #routeMap { height: 500px; border-radius: 10px; }
+        .map-wrap { position: relative; }
+        .route-hud {
+            display: none;
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            z-index: 800;
+            background: rgba(26,26,46,0.82);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 12px;
+            padding: 14px 16px;
+            color: #fff;
+            min-width: 170px;
+            max-width: 260px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+        }
+        .route-hud .hud-title {
+            font-size: 0.82rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.15);
+        }
+        .route-hud .hud-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            padding: 3px 0;
+        }
+        .route-hud .hud-label {
+            font-size: 0.72rem;
+            color: rgba(255,255,255,0.6);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .route-hud .hud-val {
+            font-size: 0.95rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Footer */
+        footer { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 32px 0 8px; }
+
+        /* D3 Chart Styles */
+        .hc-chart svg { width: 100%; display: block; }
+        .hc-chart .title { font-size: 14px; font-weight: 700; fill: var(--text); }
+        .hc-chart .axis text { font-size: 11px; fill: var(--axis-text); }
+        .hc-chart .axis line, .hc-chart .axis path { stroke: var(--border); }
+        .hc-chart .axis .domain { display: none; }
+        .hc-chart .grid line { stroke: var(--grid-line); stroke-dasharray: 2,2; }
+        .hc-chart .grid .domain { display: none; }
+        .hc-chart .legend text { font-size: 11px; fill: var(--muted); }
+        .hc-chart .brush .selection { fill: var(--accent); fill-opacity: 0.12; stroke: var(--accent); stroke-width: 1; }
+        .hc-chart .brush .overlay { cursor: crosshair; }
+        .hc-no-data { text-align: center; color: var(--muted); padding: 48px 16px; font-size: 0.9rem; }
+
+        /* Tooltip */
+        #hc-tooltip {
+            position: fixed;
+            pointer-events: none;
+            background: rgba(26,26,46,0.92);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            line-height: 1.5;
+            max-width: 240px;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.12s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+        }
+        #hc-tooltip.visible { opacity: 1; }
+        #hc-tooltip .tt-label { color: #9ca3af; font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; }
+        #hc-tooltip .tt-value { font-weight: 700; font-size: 13px; }
+        #hc-tooltip .tt-row { display: flex; align-items: center; gap: 6px; }
+        #hc-tooltip .tt-swatch { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+        /* Reset zoom button */
+        .hc-reset-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.15s;
+            z-index: 10;
+        }
+        .hc-reset-btn.visible { opacity: 1; }
+        .hc-reset-btn:hover { background: #3a6aa8; }
+
+        .chart-card { position: relative; }
+        /* Dark mode toggle */
+        .theme-toggle {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+        .theme-toggle:hover {
+            background: rgba(255,255,255,0.22);
+            border-color: rgba(255,255,255,0.35);
+            transform: rotate(20deg);
+        }
+
+        @media (max-width: 900px) {
+            .hero-cards { grid-template-columns: repeat(2, 1fr); }
+            .chart-grid { grid-template-columns: 1fr; }
+        }
+
+        /* Print */
+        @media print {
+            .tab-bar, .theme-toggle, .hc-reset-btn, .brush { display: none !important; }
+            .banner { background: none !important; box-shadow: none; border: none; padding: 0 0 8px; margin: 0 0 8px; }
+            .banner::before, .banner::after { display: none; }
+            .banner h1 { color: #000 !important; text-shadow: none !important; }
+            .banner .date-badge { background: #eee !important; color: #333 !important; border-color: #ccc !important; -webkit-backdrop-filter: none; backdrop-filter: none; }
+            .tab-content { display: block !important; opacity: 1 !important; page-break-inside: avoid; }
+            body { background: #fff; padding: 0; }
+            .chart-card, .hero-card, .stat-card, .map-container, .table-wrap {
+                box-shadow: none; break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div id="hc-tooltip"></div>
+
+{# ── Macros ── #}
+{% macro hero(label, value, color, spark, delta=None, delta_dir=None, tip=None) %}
+<div class="hero-card"{% if tip %} title="{{ tip }}"{% endif %}>
+    <div class="value" style="color: {{ color }}">{{ value }}{% if delta %}<span class="hero-delta {{ delta_dir or '' }}" title="vs prior period">{{ delta }}</span>{% endif %}</div>
+    <div class="label">{{ label }}{% if tip %}<span class="info-dot">i</span>{% endif %}</div>
+    {% if spark and spark|length > 2 %}
+    <svg class="sparkline" width="80" height="24" viewBox="0 0 80 24" style="margin-top:6px;overflow:visible;">
+        {% set ns = namespace(mn=spark[0], mx=spark[0]) %}
+        {% for v in spark %}{% if v < ns.mn %}{% set ns.mn = v %}{% endif %}{% if v > ns.mx %}{% set ns.mx = v %}{% endif %}{% endfor %}
+        {% set rng = ns.mx - ns.mn if ns.mx != ns.mn else 1 %}
+        <polyline fill="none" stroke="{{ color }}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"
+            points="{% for v in spark %}{{ (loop.index0 / (spark|length - 1) * 78 + 1)|round(1) }},{{ (22 - (v - ns.mn) / rng * 20)|round(1) }}{% if not loop.last %} {% endif %}{% endfor %}" />
+    </svg>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{% macro stat(label, value, color, tip=None) %}
+<div class="stat-card" style="--stat-color: {{ color }}"{% if tip %} title="{{ tip }}"{% endif %}>
+    <div class="value" style="color: {{ color }}">{{ value }}</div>
+    <div class="label">{{ label }}{% if tip %}<span class="info-dot">i</span>{% endif %}</div>
+</div>
+{% endmacro %}
+
+<!-- Header -->
+<div class="banner">
+    <div class="banner-top">
+        <div class="banner-title">
+            <h1>Vitalog</h1>
+            <span class="date-badge">&#x1F4C5; {{ start_date }} &ndash; {{ end_date }}</span>
+        </div>
+        <div class="banner-right">
+            {% if profile and (profile.age or profile.date_of_birth or profile.sex or profile.height_display or profile.weight_lbs) %}
+            <div class="profile-hud">
+                {% if profile.age %}<div class="phud-row">&#x1F382; <span>{{ profile.age }} yr</span></div>{% endif %}
+                {% if profile.date_of_birth and not profile.age %}<div class="phud-row">&#x1F382; <span>{{ profile.date_of_birth }}</span></div>{% endif %}
+                {% if profile.sex %}<div class="phud-row">{% if profile.sex == 'male' %}&#x2642;&#xFE0F;{% else %}&#x2640;&#xFE0F;{% endif %} <span>{{ profile.sex | capitalize }}</span></div>{% endif %}
+                {% if profile.height_display %}<div class="phud-row">&#x1F4CF; <span>{{ profile.height_display }}</span></div>{% endif %}
+                {% if profile.weight_lbs %}<div class="phud-row">&#x2696;&#xFE0F; <span>{{ profile.weight_lbs }} lb</span></div>{% endif %}
+            </div>
+            {% endif %}
+            <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode" id="themeBtn">&#x1F319;</button>
+        </div>
+    </div>
+    <div class="tab-bar">
+        <button class="tab-btn active" data-tab="overview" onclick="switchTab('overview')"><span class="tab-emoji">&#x1F4CA;</span>Overview</button>
+        <button class="tab-btn" data-tab="vitals" onclick="switchTab('vitals')"><span class="tab-emoji">&#x2764;&#xFE0F;</span>Vitals</button>
+        <button class="tab-btn" data-tab="sleep" onclick="switchTab('sleep')"><span class="tab-emoji">&#x1F319;</span>Sleep</button>
+        <button class="tab-btn" data-tab="training" onclick="switchTab('training')"><span class="tab-emoji">&#x1F3CB;</span>Training</button>
+        <button class="tab-btn" data-tab="activity" onclick="switchTab('activity')"><span class="tab-emoji">&#x1F525;</span>Activity</button>
+        <button class="tab-btn" data-tab="routes" onclick="switchTab('routes')"><span class="tab-emoji">&#x1F4CD;</span>Routes</button>
+    </div>
+</div>
+
+<!-- OVERVIEW TAB -->
+<div id="tab-overview" class="tab-content active">
+    <div class="hero-cards">
+        {% for card in overview.hero_cards %}
+        {{ hero(card.label, card.value, card.color, card.spark, card.delta, card.delta_dir, card.tip) }}
+        {% endfor %}
+    </div>
+    <div class="stat-row">
+        {% for card in overview.stat_cards %}
+        {{ stat(card.label, card.value, card.color, card.tip) }}
+        {% endfor %}
+    </div>
+    <div class="section-label">Day-of-Week Patterns</div>
+    <div class="chart-grid">
+        <div class="chart-card full-width"><div id="chart-dow" class="hc-chart"></div></div>
+    </div>
+    {% if overview.personal_records %}
+    <div class="section-label">Personal Records</div>
+    <div class="stat-row">
+        {% for pr in overview.personal_records %}
+        <div class="stat-card pr-card" style="--stat-color: #FFD700">
+            <div style="font-size:1.6rem;margin-bottom:4px">{{ pr.icon }}</div>
+            <div class="value" style="color: var(--text); font-size:1.5rem; font-weight:800">{{ pr.value }}</div>
+            <div class="label" style="font-size:0.78rem;margin-top:4px">{{ pr.label }}</div>
+            <div style="font-size:0.72rem;color:var(--muted);margin-top:4px">{{ pr.date }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% if overview.monthly_table %}
+    <div class="section-label">Month by Month</div>
+    <div class="table-wrap" id="monthly-table-wrap">
+        {{ overview.monthly_table | safe }}
+        <div class="table-pagination" id="monthly-pager"></div>
+    </div>
+    <script>
+    (function() {
+        var wrap = document.getElementById('monthly-table-wrap');
+        var tbody = wrap.querySelector('tbody');
+        if (!tbody) return;
+        var rows = Array.from(tbody.querySelectorAll('tr'));
+        var pageSize = 6;
+        var totalPages = Math.ceil(rows.length / pageSize);
+        if (totalPages <= 1) return;
+        var page = 0;
+        var pager = document.getElementById('monthly-pager');
+        function render() {
+            rows.forEach(function(r, i) {
+                r.style.display = (i >= page * pageSize && i < (page + 1) * pageSize) ? '' : 'none';
+            });
+            pager.innerHTML = '<button id="mp-prev">&lsaquo; Prev</button>' +
+                '<span>' + (page + 1) + ' / ' + totalPages + '</span>' +
+                '<button id="mp-next">Next &rsaquo;</button>';
+            pager.querySelector('#mp-prev').disabled = page === 0;
+            pager.querySelector('#mp-next').disabled = page === totalPages - 1;
+            pager.querySelector('#mp-prev').onclick = function() { page--; render(); };
+            pager.querySelector('#mp-next').onclick = function() { page++; render(); };
+        }
+        render();
+    })();
+    </script>
+    {% endif %}
+</div>
+
+<!-- VITALS TAB -->
+<div id="tab-vitals" class="tab-content">
+    {% if vitals.stat_cards %}
+    <div class="stat-row">
+        {% for card in vitals.stat_cards %}
+        {{ stat(card.label, card.value, card.color, card.tip) }}
+        {% endfor %}
+    </div>
+    {% endif %}
+    <div class="chart-grid">
+        <div class="chart-card"><div id="chart-steps" class="hc-chart"></div></div>
+        <div class="chart-card"><div id="chart-hr" class="hc-chart"></div></div>
+        <div class="chart-card"><div id="chart-vo2max" class="hc-chart"></div></div>
+        <div class="chart-card"><div id="chart-hrv" class="hc-chart"></div></div>
+        <div class="chart-card"><div id="chart-respiratory" class="hc-chart"></div></div>
+        <div class="chart-card"><div id="chart-spo2" class="hc-chart"></div></div>
+        <div class="chart-card"><div id="chart-weight" class="hc-chart"></div></div>
+        <div class="chart-card"><div id="chart-bmi" class="hc-chart"></div></div>
+        <div class="chart-card full-width"><div id="chart-hr-zones" class="hc-chart"></div></div>
+    </div>
+</div>
+
+<!-- SLEEP TAB -->
+<div id="tab-sleep" class="tab-content">
+    {% if sleep.hero_cards %}
+    <div class="hero-cards">
+        {% for card in sleep.hero_cards %}
+        {{ hero(card.label, card.value, card.color, card.spark, card.delta, card.delta_dir, card.tip) }}
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% if sleep.stat_cards %}
+    <div class="stat-row">
+        {% for card in sleep.stat_cards %}
+        {{ stat(card.label, card.value, card.color, card.tip) }}
+        {% endfor %}
+    </div>
+    {% endif %}
+    <div class="chart-grid">
+        <div class="chart-card full-width"><div id="chart-sleep-score" class="hc-chart"></div></div>
+        <div class="chart-card full-width"><div id="chart-sleep" class="hc-chart"></div></div>
+        <div class="chart-card full-width"><div id="chart-sleep-stages" class="hc-chart"></div></div>
+        <div class="chart-card"><div id="chart-sleep-efficiency" class="hc-chart"></div></div>
+        <div class="chart-card"><div id="chart-sleep-regularity" class="hc-chart"></div></div>
+        <div class="chart-card"><div id="chart-sleep-latency" class="hc-chart"></div></div>
+        <div class="chart-card"><div id="chart-snore" class="hc-chart"></div></div>
+        <div class="chart-card full-width"><div id="chart-sleep-hr" class="hc-chart"></div></div>
+        <div class="chart-card full-width"><div id="chart-sleep-environment" class="hc-chart"></div></div>
+        <div class="chart-card full-width"><div id="chart-sleep-impact" class="hc-chart"></div></div>
+    </div>
+</div>
+
+<!-- TRAINING TAB -->
+<div id="tab-training" class="tab-content">
+    {% if training.hero_cards %}
+    <div class="hero-cards">
+        {% for card in training.hero_cards %}
+        {{ hero(card.label, card.value, card.color, card.spark, card.delta, card.delta_dir, card.tip) }}
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% for group in training.card_groups %}
+    <div class="card-group">
+        <div class="card-group-label" onclick="this.parentElement.classList.toggle('collapsed')">{{ group.label }}</div>
+        <div class="stat-row">
+            {% for card in group.cards %}
+            {{ stat(card.label, card.value, card.color, card.tip) }}
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+    {% if training.records %}
+    <div class="section-label">Training Records</div>
+    <div class="stat-row">
+        {% for pr in training.records %}
+        <div class="stat-card pr-card" style="--stat-color: #FFD700">
+            <div class="value" style="color: var(--text); font-size:1.3rem; font-weight:800">{{ pr.value }}</div>
+            <div class="label" style="font-size:0.78rem;margin-top:4px">{{ pr.label }}</div>
+            <div style="font-size:0.72rem;color:var(--muted);margin-top:4px">{{ pr.date }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    <div class="chart-grid">
+        <div class="chart-card"><div id="chart-pace" class="hc-chart"></div></div>
+        <div class="chart-card"><div id="chart-run-dist" class="hc-chart"></div></div>
+        <div class="chart-card full-width"><div id="chart-types" class="hc-chart"></div></div>
+        <div class="chart-card"><div id="chart-weekly" class="hc-chart"></div></div>
+        <div class="chart-card"><div id="chart-volume" class="hc-chart"></div></div>
+        <div class="chart-card"><div id="chart-cycling" class="hc-chart"></div></div>
+        <div class="chart-card"><div id="chart-mechanics" class="hc-chart"></div></div>
+        <div class="chart-card full-width"><div id="chart-heatmap" class="hc-chart"></div></div>
+    </div>
+</div>
+
+<!-- ACTIVITY TAB -->
+<div id="tab-activity" class="tab-content">
+    {% if activity.stat_cards %}
+    <div class="stat-row">
+        {% for card in activity.stat_cards %}
+        {{ stat(card.label, card.value, card.color, card.tip) }}
+        {% endfor %}
+    </div>
+    {% endif %}
+    <div class="chart-grid">
+        <div class="chart-card full-width"><div id="chart-rings" class="hc-chart"></div></div>
+        <div class="chart-card"><div id="chart-walking" class="hc-chart"></div></div>
+        <div class="chart-card"><div id="chart-flights" class="hc-chart"></div></div>
+        <div class="chart-card full-width"><div id="chart-correlation" class="hc-chart"></div></div>
+    </div>
+</div>
+
+<!-- ROUTES TAB -->
+<div id="tab-routes" class="tab-content">
+    {% if routes_tab.stat_cards %}
+    <div class="stat-row">
+        {% for card in routes_tab.stat_cards %}
+        {{ stat(card.label, card.value, card.color, card.tip) }}
+        {% endfor %}
+    </div>
+    {% endif %}
+    {{ routes_html | safe }}
+</div>
+
+<footer>
+    Generated {{ generated_at }} by <a href="https://github.com/geocoug/vitalog" style="color:var(--muted);">Vitalog</a> &middot; &copy; 2026&ndash;present <a href="https://github.com/geocoug" style="color:var(--muted);">@geocoug</a>
+</footer>
+
+<script>
+(function() {
+    var saved = localStorage.getItem('health-theme');
+    if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    }
+    updateThemeIcon();
+    function updateThemeIcon() {
+        var btn = document.getElementById('themeBtn');
+        if (btn) btn.innerHTML = document.documentElement.getAttribute('data-theme') === 'dark' ? '&#x2600;&#xFE0F;' : '&#x1F319;';
+    }
+    window.toggleTheme = function() {
+        var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+        localStorage.setItem('health-theme', isDark ? 'light' : 'dark');
+        updateThemeIcon();
+    };
+})();
+</script>
+
+<!-- Chart Data -->
+<script>window.HEALTH_DATA = {{ chart_data_json | safe }};</script>
+
+<!-- D3 Chart Library -->
+<script>
+const HC = (function() {
+    const parseDate = d3.timeParse('%Y-%m-%d');
+    const fmtDate = d3.timeFormat('%b %d, %Y');
+    const fmtDateShort = d3.timeFormat('%b %Y');
+    const fmtNum = d3.format(',');
+    const fmtDec1 = d3.format(',.1f');
+    const fmtDec2 = d3.format(',.2f');
+
+    const tooltip = d3.select('#hc-tooltip');
+
+    function showTip(html, event) {
+        tooltip.html(html).classed('visible', true);
+        const tt = tooltip.node();
+        const bw = window.innerWidth, bh = window.innerHeight;
+        let x = event.clientX + 14, y = event.clientY - 10;
+        if (x + tt.offsetWidth > bw - 10) x = event.clientX - tt.offsetWidth - 14;
+        if (y + tt.offsetHeight > bh - 10) y = bh - tt.offsetHeight - 10;
+        if (y < 10) y = 10;
+        tooltip.style('left', x + 'px').style('top', y + 'px');
+    }
+
+    function hideTip() { tooltip.classed('visible', false); }
+
+    function mkSvg(sel, opts) {
+        const el = d3.select(sel);
+        if (!el.node()) return null;
+        const m = opts.margin || {top: 44, right: 20, bottom: 36, left: 56};
+        const h = opts.height || 320;
+        const w = el.node().clientWidth;
+        if (w <= 0) return null;
+        const svg = el.append('svg')
+            .attr('width', w)
+            .attr('height', h)
+            .attr('viewBox', `0 0 ${w} ${h}`);
+        const inner = svg.append('g').attr('transform', `translate(${m.left},${m.top})`);
+        const iw = w - m.left - m.right;
+        const ih = h - m.top - m.bottom;
+        if (opts.title) {
+            svg.append('text').attr('class', 'title')
+                .attr('x', m.left).attr('y', 26)
+                .text(opts.title);
+        }
+        return {svg, g: inner, w: iw, h: ih, m, totalW: w, totalH: h, el};
+    }
+
+    function addGrid(g, yScale, w) {
+        g.append('g').attr('class', 'grid')
+            .call(d3.axisLeft(yScale).tickSize(-w).tickFormat(''));
+    }
+
+    function addXAxis(g, scale, h, label) {
+        const ax = g.append('g').attr('class', 'axis x-axis')
+            .attr('transform', `translate(0,${h})`)
+            .call(d3.axisBottom(scale).ticks(6).tickSizeOuter(0));
+        if (label) {
+            ax.append('text').attr('x', g.node().getBBox ? scale.range()[1] / 2 : 100)
+                .attr('y', 32).attr('fill', '#6b7280').attr('text-anchor', 'middle')
+                .attr('font-size', '11px').text(label);
+        }
+        return ax;
+    }
+
+    function addYAxis(g, scale, label, side) {
+        const axis = side === 'right' ? d3.axisRight(scale) : d3.axisLeft(scale);
+        const ax = g.append('g').attr('class', 'axis y-axis')
+            .call(axis.ticks(5).tickSizeOuter(0));
+        if (side === 'right') {
+            ax.attr('transform', `translate(${g.node().__data__?.w || 0},0)`);
+        }
+        if (label) {
+            const x = side === 'right' ? 40 : -40;
+            ax.append('text')
+                .attr('transform', 'rotate(-90)')
+                .attr('y', x).attr('x', -scale.range()[0] / 2)
+                .attr('fill', '#6b7280').attr('text-anchor', 'middle')
+                .attr('font-size', '11px').text(label);
+        }
+        return ax;
+    }
+
+    function addLegend(svg, items, x, y) {
+        const lg = svg.append('g').attr('class', 'legend').attr('transform', `translate(${x},${y})`);
+        let cx = 0;
+        items.forEach(function(item) {
+            const g = lg.append('g').attr('transform', `translate(${cx},0)`);
+            g.append('rect').attr('width', 10).attr('height', 10).attr('rx', 2)
+                .attr('fill', item.color).attr('opacity', item.opacity || 1);
+            g.append('text').attr('x', 14).attr('y', 9).text(item.label);
+            cx += 14 + item.label.length * 6.5 + 16;
+        });
+    }
+
+    function addBrush(ctx, xScale, fullDomain, onBrush) {
+        const brushH = 24;
+        const brushG = ctx.g.append('g').attr('class', 'brush')
+            .attr('transform', `translate(0,${ctx.h + 6})`);
+
+        const miniX = d3.scaleTime().domain(fullDomain).range([0, ctx.w]);
+        const brush = d3.brushX()
+            .extent([[0, 0], [ctx.w, brushH]])
+            .on('end', function(event) {
+                if (!event.selection) {
+                    onBrush(fullDomain);
+                    resetBtn.classed('visible', false);
+                    return;
+                }
+                const [x0, x1] = event.selection;
+                onBrush([miniX.invert(x0), miniX.invert(x1)]);
+                resetBtn.classed('visible', true);
+            });
+
+        brushG.call(brush);
+
+        const card = ctx.el.node().closest('.chart-card');
+        let resetBtn = d3.select(card).select('.hc-reset-btn');
+        if (resetBtn.empty()) {
+            resetBtn = d3.select(card).append('button')
+                .attr('class', 'hc-reset-btn')
+                .text('Reset Zoom')
+                .on('click', function() {
+                    brushG.call(brush.move, null);
+                    onBrush(fullDomain);
+                    resetBtn.classed('visible', false);
+                });
+        }
+
+        return {brush, brushG, miniX};
+    }
+
+    // ──────────────────────────────────────────────────────
+    // HC.timeLine — line chart with optional MA and fill band
+    // ──────────────────────────────────────────────────────
+    function timeLine(sel, rawData, opts) {
+        if (!rawData || !rawData.length) {
+            d3.select(sel).html('<div class="hc-no-data">No data</div>');
+            return {resize: function(){}};
+        }
+        const data = rawData.map(function(d) {
+            const o = Object.assign({}, d);
+            o._date = parseDate(d.date) || new Date(d.date);
+            return o;
+        });
+
+        const lines = opts.lines || [];
+        const band = opts.band || null;
+        const threshold = opts.threshold || null;
+
+        const ctx = mkSvg(sel, opts);
+        if (!ctx) return {resize: function(){}};
+
+        const fullDomain = d3.extent(data, function(d) { return d._date; });
+        const xScale = d3.scaleTime().domain(fullDomain).range([0, ctx.w]);
+
+        function getAllYVals(d) {
+            const vals = [];
+            lines.forEach(function(l) { if (d[l.key] != null) vals.push(d[l.key]); });
+            if (band) {
+                if (d[band.upper] != null) vals.push(d[band.upper]);
+                if (d[band.lower] != null) vals.push(d[band.lower]);
+            }
+            return vals;
+        }
+        const allY = data.flatMap(getAllYVals);
+        const yMin = opts.yMin != null ? opts.yMin : d3.min(allY) * 0.95;
+        const yMax = opts.yMax != null ? opts.yMax : d3.max(allY) * 1.05;
+        const yDomain = opts.invertY ? [yMax, yMin] : [yMin, yMax];
+        const yScale = d3.scaleLinear().domain(yDomain).range([ctx.h, 0]).nice();
+
+        addGrid(ctx.g, yScale, ctx.w);
+        const xAxisG = addXAxis(ctx.g, xScale, ctx.h);
+        addYAxis(ctx.g, yScale, opts.yLabel);
+
+        // Clip path
+        ctx.svg.append('defs').append('clipPath').attr('id', 'clip-' + sel.replace(/[^a-z0-9]/gi, ''))
+            .append('rect').attr('width', ctx.w).attr('height', ctx.h);
+        const plotArea = ctx.g.append('g')
+            .attr('clip-path', 'url(#clip-' + sel.replace(/[^a-z0-9]/gi, '') + ')');
+
+        // Fill band
+        if (band) {
+            const area = d3.area()
+                .defined(function(d) { return d[band.upper] != null && d[band.lower] != null; })
+                .x(function(d) { return xScale(d._date); })
+                .y0(function(d) { return yScale(d[band.lower]); })
+                .y1(function(d) { return yScale(d[band.upper]); })
+                .curve(d3.curveMonotoneX);
+            plotArea.append('path').datum(data)
+                .attr('class', 'band-fill')
+                .attr('fill', band.color || 'rgba(0,0,0,0.1)')
+                .attr('d', area);
+        }
+
+        // Threshold line
+        if (threshold) {
+            plotArea.append('line')
+                .attr('class', 'threshold')
+                .attr('x1', 0).attr('x2', ctx.w)
+                .attr('y1', yScale(threshold.value)).attr('y2', yScale(threshold.value))
+                .attr('stroke', threshold.color || '#FF5722')
+                .attr('stroke-width', 1.5)
+                .attr('stroke-dasharray', '6,3')
+                .attr('opacity', 0.7);
+        }
+
+        // Lines
+        const lineGens = [];
+        lines.forEach(function(l) {
+            const gen = d3.line()
+                .defined(function(d) { return d[l.key] != null; })
+                .x(function(d) { return xScale(d._date); })
+                .y(function(d) { return yScale(d[l.key]); })
+                .curve(d3.curveMonotoneX);
+            lineGens.push({gen: gen, cfg: l});
+            plotArea.append('path').datum(data)
+                .attr('class', 'line-' + l.key)
+                .attr('fill', 'none')
+                .attr('stroke', l.color)
+                .attr('stroke-width', l.width || 2)
+                .attr('opacity', l.opacity != null ? l.opacity : 1)
+                .attr('d', gen);
+        });
+
+        // Legend
+        const legendItems = lines.filter(function(l) { return l.label; }).map(function(l) {
+            return {label: l.label, color: l.color, opacity: l.opacity || 1};
+        });
+        if (legendItems.length > 1) {
+            addLegend(ctx.svg, legendItems, ctx.m.left, ctx.m.top - 14);
+        }
+
+        // Hover overlay
+        const bisect = d3.bisector(function(d) { return d._date; }).left;
+        const hoverLine = plotArea.append('line')
+            .attr('stroke', '#9ca3af').attr('stroke-width', 1).attr('stroke-dasharray', '3,3')
+            .attr('y1', 0).attr('y2', ctx.h).style('opacity', 0);
+        const hoverDots = [];
+        lines.forEach(function(l) {
+            hoverDots.push(plotArea.append('circle')
+                .attr('r', 4).attr('fill', l.color).attr('stroke', '#fff').attr('stroke-width', 2)
+                .style('opacity', 0));
+        });
+
+        ctx.g.append('rect').attr('class', 'hover-rect')
+            .attr('width', ctx.w).attr('height', ctx.h)
+            .attr('fill', 'none').attr('pointer-events', 'all')
+            .on('mousemove', function(event) {
+                const [mx] = d3.pointer(event);
+                const x0 = xScale.invert(mx);
+                const i = bisect(data, x0, 1);
+                const d0 = data[i - 1], d1 = data[i];
+                if (!d0) return;
+                const d = (!d1 || x0 - d0._date > d1._date - x0) ? d1 || d0 : d0;
+                const px = xScale(d._date);
+                hoverLine.attr('x1', px).attr('x2', px).style('opacity', 1);
+                let html = '<div class="tt-label">' + fmtDate(d._date) + '</div>';
+                lines.forEach(function(l, li) {
+                    if (d[l.key] != null) {
+                        const v = typeof d[l.key] === 'number' ? fmtDec1(d[l.key]) : d[l.key];
+                        html += '<div class="tt-row"><span class="tt-swatch" style="background:' +
+                            l.color + '"></span><span class="tt-value">' + v + '</span> ' +
+                            (l.label || l.key) + '</div>';
+                        hoverDots[li].attr('cx', px).attr('cy', yScale(d[l.key])).style('opacity', 1);
+                    } else {
+                        hoverDots[li].style('opacity', 0);
+                    }
+                });
+                showTip(html, event);
+            })
+            .on('mouseleave', function() {
+                hoverLine.style('opacity', 0);
+                hoverDots.forEach(function(dot) { dot.style('opacity', 0); });
+                hideTip();
+            });
+
+        // Brush
+        if (opts.brush !== false) {
+            addBrush(ctx, xScale, fullDomain, function(domain) {
+                xScale.domain(domain);
+                xAxisG.call(d3.axisBottom(xScale).ticks(6).tickSizeOuter(0));
+                lines.forEach(function(l, i) {
+                    plotArea.select('.line-' + l.key).attr('d', lineGens[i].gen);
+                });
+                if (band) {
+                    plotArea.select('.band-fill').attr('d',
+                        d3.area()
+                            .defined(function(d) { return d[band.upper] != null && d[band.lower] != null; })
+                            .x(function(d) { return xScale(d._date); })
+                            .y0(function(d) { return yScale(d[band.lower]); })
+                            .y1(function(d) { return yScale(d[band.upper]); })
+                            .curve(d3.curveMonotoneX)
+                    );
+                }
+            });
+        }
+
+        return {
+            resize: function() {
+                const nw = d3.select(sel).node().clientWidth;
+                if (nw <= 0) return;
+                ctx.svg.attr('width', nw).attr('viewBox', `0 0 ${nw} ${ctx.totalH}`);
+            }
+        };
+    }
+
+    // ──────────────────────────────────────────────────────
+    // HC.timeBar — bar chart with optional MA line overlay
+    // ──────────────────────────────────────────────────────
+    function timeBar(sel, rawData, opts) {
+        if (!rawData || !rawData.length) {
+            d3.select(sel).html('<div class="hc-no-data">No data</div>');
+            return {resize: function(){}};
+        }
+        const data = rawData.map(function(d) {
+            const o = Object.assign({}, d);
+            o._date = parseDate(d.date) || new Date(d.date);
+            return o;
+        });
+
+        const yKey = opts.yKey;
+        const maKey = opts.maKey;
+        const barColor = opts.barColor || '#4CAF50';
+        const maColor = opts.maColor || '#FF5722';
+
+        const ctx = mkSvg(sel, opts);
+        if (!ctx) return {resize: function(){}};
+
+        const fullDomain = d3.extent(data, function(d) { return d._date; });
+        const xScale = d3.scaleTime().domain(fullDomain).range([0, ctx.w]);
+        const barW = Math.max(1, ctx.w / data.length - 1);
+
+        const yVals = data.map(function(d) { return d[yKey] || 0; });
+        if (maKey) data.forEach(function(d) { if (d[maKey] != null) yVals.push(d[maKey]); });
+        if (opts.threshold) yVals.push(opts.threshold.value);
+        const yScale = d3.scaleLinear().domain([0, d3.max(yVals) * 1.05]).range([ctx.h, 0]).nice();
+
+        addGrid(ctx.g, yScale, ctx.w);
+        const xAxisG = addXAxis(ctx.g, xScale, ctx.h);
+        addYAxis(ctx.g, yScale, opts.yLabel);
+
+        // Clip
+        const clipId = 'clip-' + sel.replace(/[^a-z0-9]/gi, '');
+        ctx.svg.append('defs').append('clipPath').attr('id', clipId)
+            .append('rect').attr('width', ctx.w).attr('height', ctx.h);
+        const plotArea = ctx.g.append('g').attr('clip-path', 'url(#' + clipId + ')');
+
+        // Bars
+        plotArea.selectAll('.bar').data(data).enter().append('rect')
+            .attr('class', 'bar')
+            .attr('x', function(d) { return xScale(d._date) - barW / 2; })
+            .attr('y', function(d) { return yScale(d[yKey] || 0); })
+            .attr('width', barW)
+            .attr('height', function(d) { return ctx.h - yScale(d[yKey] || 0); })
+            .attr('fill', barColor)
+            .attr('opacity', 0.7);
+
+        // MA line
+        let maGen;
+        if (maKey) {
+            maGen = d3.line()
+                .defined(function(d) { return d[maKey] != null; })
+                .x(function(d) { return xScale(d._date); })
+                .y(function(d) { return yScale(d[maKey]); })
+                .curve(d3.curveMonotoneX);
+            plotArea.append('path').datum(data)
+                .attr('class', 'ma-line')
+                .attr('fill', 'none')
+                .attr('stroke', maColor)
+                .attr('stroke-width', 2)
+                .attr('d', maGen);
+        }
+
+        // Threshold line
+        if (opts.threshold) {
+            const tv = opts.threshold.value;
+            const tc = opts.threshold.color || '#FF5722';
+            if (tv >= yScale.domain()[0] && tv <= yScale.domain()[1]) {
+                plotArea.append('line')
+                    .attr('x1', 0).attr('x2', ctx.w)
+                    .attr('y1', yScale(tv)).attr('y2', yScale(tv))
+                    .attr('stroke', tc).attr('stroke-width', 1.5)
+                    .attr('stroke-dasharray', '6,4').attr('opacity', 0.7);
+                plotArea.append('text')
+                    .attr('x', ctx.w - 4).attr('y', yScale(tv) - 5)
+                    .attr('text-anchor', 'end').attr('fill', tc)
+                    .attr('font-size', '11px').attr('font-weight', 600)
+                    .text(opts.threshold.label || fmtNum(tv));
+            }
+        }
+
+        // Legend
+        const items = [{label: opts.barLabel || yKey, color: barColor}];
+        if (maKey) items.push({label: opts.maLabel || 'Moving Avg', color: maColor});
+        if (items.length > 1) addLegend(ctx.svg, items, ctx.m.left, ctx.m.top - 14);
+
+        // Hover
+        const bisect = d3.bisector(function(d) { return d._date; }).left;
+        ctx.g.append('rect').attr('width', ctx.w).attr('height', ctx.h)
+            .attr('fill', 'none').attr('pointer-events', 'all')
+            .on('mousemove', function(event) {
+                const [mx] = d3.pointer(event);
+                const x0 = xScale.invert(mx);
+                const i = bisect(data, x0, 1);
+                const d0 = data[i - 1], d1 = data[i];
+                if (!d0) return;
+                const d = (!d1 || x0 - d0._date > d1._date - x0) ? d1 || d0 : d0;
+                let html = '<div class="tt-label">' + fmtDate(d._date) + '</div>';
+                html += '<div class="tt-row"><span class="tt-swatch" style="background:' + barColor +
+                    '"></span><span class="tt-value">' + fmtNum(d[yKey] || 0) + '</span> ' +
+                    (opts.barLabel || yKey) + '</div>';
+                if (maKey && d[maKey] != null) {
+                    html += '<div class="tt-row"><span class="tt-swatch" style="background:' + maColor +
+                        '"></span><span class="tt-value">' + fmtNum(Math.round(d[maKey])) + '</span> ' +
+                        (opts.maLabel || 'Avg') + '</div>';
+                }
+                showTip(html, event);
+            })
+            .on('mouseleave', hideTip);
+
+        // Brush
+        if (opts.brush !== false) {
+            addBrush(ctx, xScale, fullDomain, function(domain) {
+                xScale.domain(domain);
+                const newBarW = Math.max(1, ctx.w / data.filter(function(d) {
+                    return d._date >= domain[0] && d._date <= domain[1];
+                }).length - 1);
+                xAxisG.call(d3.axisBottom(xScale).ticks(6).tickSizeOuter(0));
+                plotArea.selectAll('.bar')
+                    .attr('x', function(d) { return xScale(d._date) - newBarW / 2; })
+                    .attr('width', newBarW)
+                    .attr('y', function(d) { return yScale(d[yKey] || 0); })
+                    .attr('height', function(d) { return ctx.h - yScale(d[yKey] || 0); });
+                if (maGen) plotArea.select('.ma-line').attr('d', maGen);
+            });
+        }
+
+        return {
+            resize: function() {
+                const nw = d3.select(sel).node().clientWidth;
+                if (nw <= 0) return;
+                ctx.svg.attr('width', nw).attr('viewBox', `0 0 ${nw} ${ctx.totalH}`);
+            }
+        };
+    }
+
+    // ──────────────────────────────────────────────────────
+    // HC.hBar — horizontal bar chart
+    // ──────────────────────────────────────────────────────
+    function hBar(sel, rawData, opts) {
+        if (!rawData || !rawData.length) {
+            d3.select(sel).html('<div class="hc-no-data">No data</div>');
+            return {resize: function(){}};
+        }
+        const data = rawData.slice().reverse();
+        const barH = 22;
+        const h = Math.min(opts.maxHeight || 500, Math.max(220, data.length * (barH + 3) + 70));
+        const m = {top: 44, right: 30, bottom: 20, left: 140};
+
+        const ctx = mkSvg(sel, Object.assign({}, opts, {height: h, margin: m}));
+        if (!ctx) return {resize: function(){}};
+
+        const yScale = d3.scaleBand()
+            .domain(data.map(function(d) { return d[opts.labelKey || 'type']; }))
+            .range([0, ctx.h])
+            .padding(0.15);
+
+        const xScale = d3.scaleLinear()
+            .domain([0, d3.max(data, function(d) { return d[opts.valueKey || 'count']; }) * 1.1])
+            .range([0, ctx.w]);
+
+        ctx.g.append('g').attr('class', 'axis')
+            .call(d3.axisLeft(yScale).tickSizeOuter(0))
+            .selectAll('text')
+            .text(function(d) { return d.replace('HKWorkoutActivityType', ''); });
+
+        ctx.g.append('g').attr('class', 'axis')
+            .attr('transform', `translate(0,${ctx.h})`)
+            .call(d3.axisBottom(xScale).ticks(5).tickSizeOuter(0));
+
+        var lKey = opts.labelKey || 'type';
+        var vKey = opts.valueKey || 'count';
+        var bars = ctx.g.selectAll('.bar').data(data).enter().append('rect')
+            .attr('class', 'bar')
+            .attr('y', function(d) { return yScale(d[lKey]); })
+            .attr('height', yScale.bandwidth())
+            .attr('x', 0)
+            .attr('width', 0)
+            .attr('fill', opts.color || '#2196F3')
+            .attr('rx', 3);
+
+        bars.on('mouseover', function(event, d) {
+                d3.select(this).attr('opacity', 0.85);
+                var name = d[lKey].replace('HKWorkoutActivityType', '');
+                showTip('<div class="tt-label">' + name + '</div><div class="tt-value">' + fmtNum(d[vKey]) + ' workouts</div>', event);
+            })
+            .on('mouseleave', function() {
+                d3.select(this).attr('opacity', 1);
+                hideTip();
+            });
+
+        bars.transition().duration(600).ease(d3.easeCubicOut)
+            .attr('width', function(d) { return xScale(d[vKey]); });
+
+        // Value labels
+        ctx.g.selectAll('.val-label').data(data).enter().append('text')
+            .attr('class', 'val-label')
+            .attr('y', function(d) { return yScale(d[opts.labelKey || 'type']) + yScale.bandwidth() / 2; })
+            .attr('x', function(d) { return xScale(d[opts.valueKey || 'count']) + 6; })
+            .attr('dy', '0.35em')
+            .attr('font-size', '11px')
+            .attr('fill', '#6b7280')
+            .text(function(d) { return d[opts.valueKey || 'count']; });
+
+        return {resize: function() {
+            const nw = d3.select(sel).node().clientWidth;
+            if (nw <= 0) return;
+            ctx.svg.attr('width', nw).attr('viewBox', `0 0 ${nw} ${ctx.totalH}`);
+        }};
+    }
+
+    // ──────────────────────────────────────────────────────
+    // HC.scatter — scatter plot with optional bubble sizing
+    // ──────────────────────────────────────────────────────
+    function scatter(sel, rawData, opts) {
+        if (!rawData || !rawData.length) {
+            d3.select(sel).html('<div class="hc-no-data">No data</div>');
+            return {resize: function(){}};
+        }
+        const xKey = opts.xKey, yKey = opts.yKey;
+        const sizeKey = opts.sizeKey;
+        const color = opts.color || '#26A69A';
+        const data = rawData.filter(function(d) { return d[yKey] != null; });
+        if (!data.length) {
+            d3.select(sel).html('<div class="hc-no-data">No data</div>');
+            return {resize: function(){}};
+        }
+
+        data.forEach(function(d) {
+            if (d.date) d._date = parseDate(d.date) || new Date(d.date);
+        });
+
+        const ctx = mkSvg(sel, opts);
+        if (!ctx) return {resize: function(){}};
+
+        const isTime = opts.xType === 'time';
+        const xScale = isTime
+            ? d3.scaleTime().domain(d3.extent(data, function(d) { return d._date; })).range([0, ctx.w])
+            : d3.scaleLinear().domain(d3.extent(data, function(d) { return d[xKey]; })).range([0, ctx.w]).nice();
+
+        const yExt = d3.extent(data, function(d) { return d[yKey]; });
+        const yDomain = opts.invertY ? [yExt[1] * 1.05, yExt[0] * 0.95] : [yExt[0] * 0.95, yExt[1] * 1.05];
+        const yScale = d3.scaleLinear().domain(yDomain).range([ctx.h, 0]).nice();
+
+        addGrid(ctx.g, yScale, ctx.w);
+        addXAxis(ctx.g, xScale, ctx.h, opts.xLabel);
+        addYAxis(ctx.g, yScale, opts.yLabel);
+
+        ctx.g.selectAll('.dot').data(data).enter().append('circle')
+            .attr('class', 'dot')
+            .attr('cx', function(d) { return isTime ? xScale(d._date) : xScale(d[xKey]); })
+            .attr('cy', function(d) { return yScale(d[yKey]); })
+            .attr('r', function(d) {
+                if (!sizeKey) return 4;
+                const v = d[sizeKey] || 0;
+                return Math.max(3, Math.min(v * 2, 16));
+            })
+            .attr('fill', color)
+            .attr('opacity', 0.6)
+            .on('mouseover', function(event, d) {
+                d3.select(this).attr('opacity', 1).attr('stroke', '#fff').attr('stroke-width', 2);
+                let html = '<div class="tt-label">' + (d._date ? fmtDate(d._date) : d[xKey]) + '</div>';
+                html += '<div class="tt-value">' + fmtDec1(d[yKey]) + ' ' + (opts.yLabel || '') + '</div>';
+                if (sizeKey && d[sizeKey]) {
+                    html += '<div style="color:#9ca3af">' + fmtDec1(d[sizeKey]) + ' ' + (opts.sizeLabel || '') + '</div>';
+                }
+                showTip(html, event);
+            })
+            .on('mouseleave', function() {
+                d3.select(this).attr('opacity', 0.6).attr('stroke', 'none');
+                hideTip();
+            });
+
+        // Trend line
+        if (opts.trend && data.length >= 5) {
+            const window = Math.min(10, Math.floor(data.length / 2));
+            const maData = data.map(function(d, i) {
+                const start = Math.max(0, i - window);
+                const slice = data.slice(start, i + 1);
+                const avg = d3.mean(slice, function(s) { return s[yKey]; });
+                return {_date: d._date, xVal: d[xKey], ma: avg};
+            });
+            const trendLine = d3.line()
+                .x(function(d) { return isTime ? xScale(d._date) : xScale(d.xVal); })
+                .y(function(d) { return yScale(d.ma); })
+                .curve(d3.curveMonotoneX);
+            ctx.g.append('path').datum(maData)
+                .attr('fill', 'none')
+                .attr('stroke', opts.trendColor || '#00796B')
+                .attr('stroke-width', 2)
+                .attr('stroke-dasharray', '6,3')
+                .attr('d', trendLine);
+        }
+
+        return {resize: function() {
+            const nw = d3.select(sel).node().clientWidth;
+            if (nw <= 0) return;
+            ctx.svg.attr('width', nw).attr('viewBox', `0 0 ${nw} ${ctx.totalH}`);
+        }};
+    }
+
+    // ──────────────────────────────────────────────────────
+    // HC.stackedBar — stacked bar chart by category
+    // ──────────────────────────────────────────────────────
+    function stackedBar(sel, rawData, opts) {
+        if (!rawData || !rawData.length) {
+            d3.select(sel).html('<div class="hc-no-data">No data</div>');
+            return {resize: function(){}};
+        }
+        const weekKey = opts.weekKey || 'week';
+        const typeKey = opts.typeKey || 'type';
+        const valKey = opts.valueKey || 'count';
+
+        // Pivot: {week: {type: count}}
+        const types = Array.from(new Set(rawData.map(function(d) { return d[typeKey]; }))).sort();
+        const weeks = Array.from(new Set(rawData.map(function(d) { return d[weekKey]; }))).sort();
+        const lookup = {};
+        rawData.forEach(function(d) {
+            const k = d[weekKey];
+            if (!lookup[k]) lookup[k] = {};
+            lookup[k][d[typeKey]] = d[valKey];
+        });
+        const pivoted = weeks.map(function(w) {
+            const row = {week: w, _date: parseDate(w) || new Date(w)};
+            types.forEach(function(t) { row[t] = lookup[w] ? (lookup[w][t] || 0) : 0; });
+            return row;
+        });
+
+        const ctx = mkSvg(sel, opts);
+        if (!ctx) return {resize: function(){}};
+
+        const xScale = d3.scaleTime()
+            .domain(d3.extent(pivoted, function(d) { return d._date; }))
+            .range([0, ctx.w]);
+        const barW = Math.max(2, ctx.w / pivoted.length - 1);
+
+        const stack = d3.stack().keys(types);
+        const series = stack(pivoted);
+        const yMax = d3.max(series, function(s) { return d3.max(s, function(d) { return d[1]; }); });
+        const yScale = d3.scaleLinear().domain([0, yMax * 1.05]).range([ctx.h, 0]).nice();
+
+        const colors = ['#2196F3', '#4CAF50', '#FF9800', '#E91E63', '#9C27B0', '#00BCD4', '#795548',
+            '#607D8B', '#8BC34A', '#FF5722'];
+
+        addGrid(ctx.g, yScale, ctx.w);
+        addXAxis(ctx.g, xScale, ctx.h);
+        addYAxis(ctx.g, yScale, opts.yLabel || 'Count');
+
+        series.forEach(function(s, i) {
+            ctx.g.selectAll('.bar-' + i).data(s).enter().append('rect')
+                .attr('x', function(d) { return xScale(d.data._date) - barW / 2; })
+                .attr('y', function(d) { return yScale(d[1]); })
+                .attr('height', function(d) { return yScale(d[0]) - yScale(d[1]); })
+                .attr('width', barW)
+                .attr('fill', colors[i % colors.length]);
+        });
+
+        // Legend
+        const legendItems = types.map(function(t, i) {
+            return {label: t.replace('HKWorkoutActivityType', ''), color: colors[i % colors.length]};
+        });
+        addLegend(ctx.svg, legendItems, ctx.m.left, ctx.m.top - 14);
+
+        // Hover
+        var bisectStack = d3.bisector(function(d) { return d._date; }).left;
+        var stackHoverLine = ctx.g.append('line')
+            .attr('stroke', '#9ca3af').attr('stroke-width', 1).attr('stroke-dasharray', '3,3')
+            .attr('y1', 0).attr('y2', ctx.h).style('opacity', 0);
+
+        ctx.g.append('rect').attr('width', ctx.w).attr('height', ctx.h)
+            .attr('fill', 'none').attr('pointer-events', 'all')
+            .on('mousemove', function(event) {
+                var mx = d3.pointer(event)[0];
+                var x0 = xScale.invert(mx);
+                var idx = bisectStack(pivoted, x0, 1);
+                var d0 = pivoted[idx - 1], d1 = pivoted[idx];
+                if (!d0) return;
+                var d = (!d1 || x0 - d0._date > d1._date - x0) ? d1 || d0 : d0;
+                var px = xScale(d._date);
+                stackHoverLine.attr('x1', px).attr('x2', px).style('opacity', 1);
+                var wkLabel = d.week;
+                try { wkLabel = fmtDate(d._date); } catch(e) {}
+                var html = '<div class="tt-label">Week of ' + wkLabel + '</div>';
+                var total = 0;
+                types.forEach(function(t, ti) {
+                    var v = d[t] || 0;
+                    if (v > 0) {
+                        total += v;
+                        html += '<div class="tt-row"><span class="tt-swatch" style="background:' + colors[ti % colors.length] + '"></span><span class="tt-value">' + v + '</span> ' + t.replace('HKWorkoutActivityType', '') + '</div>';
+                    }
+                });
+                html += '<div style="border-top:1px solid rgba(255,255,255,0.2);margin-top:4px;padding-top:4px"><span class="tt-value">' + total + '</span> Total</div>';
+                showTip(html, event);
+            })
+            .on('mouseleave', function() {
+                stackHoverLine.style('opacity', 0);
+                hideTip();
+            });
+
+        return {resize: function() {
+            const nw = d3.select(sel).node().clientWidth;
+            if (nw <= 0) return;
+            ctx.svg.attr('width', nw).attr('viewBox', `0 0 ${nw} ${ctx.totalH}`);
+        }};
+    }
+
+    // ──────────────────────────────────────────────────────
+    // HC.stackedArea — stacked area chart
+    // ──────────────────────────────────────────────────────
+    function stackedArea(sel, rawData, opts) {
+        if (!rawData || !rawData.length) {
+            d3.select(sel).html('<div class="hc-no-data">No data</div>');
+            return {resize: function(){}};
+        }
+        const keys = opts.keys;
+        const colors = opts.colors;
+        const labels = opts.labels || keys;
+
+        const data = rawData.map(function(d) {
+            const o = Object.assign({}, d);
+            o._date = parseDate(d.date) || new Date(d.date);
+            return o;
+        });
+
+        const ctx = mkSvg(sel, opts);
+        if (!ctx) return {resize: function(){}};
+
+        const fullDomain = d3.extent(data, function(d) { return d._date; });
+        const xScale = d3.scaleTime().domain(fullDomain).range([0, ctx.w]);
+
+        const stack = d3.stack().keys(keys).order(d3.stackOrderNone).offset(d3.stackOffsetNone);
+        const series = stack(data);
+        const yMax = d3.max(series, function(s) { return d3.max(s, function(d) { return d[1]; }); });
+        const yScale = d3.scaleLinear().domain([0, yMax * 1.05]).range([ctx.h, 0]).nice();
+
+        addGrid(ctx.g, yScale, ctx.w);
+        const xAxisG = addXAxis(ctx.g, xScale, ctx.h);
+        addYAxis(ctx.g, yScale, opts.yLabel);
+
+        const clipId = 'clip-' + sel.replace(/[^a-z0-9]/gi, '');
+        ctx.svg.append('defs').append('clipPath').attr('id', clipId)
+            .append('rect').attr('width', ctx.w).attr('height', ctx.h);
+        const plotArea = ctx.g.append('g').attr('clip-path', 'url(#' + clipId + ')');
+
+        const areaGen = d3.area()
+            .x(function(d) { return xScale(d.data._date); })
+            .y0(function(d) { return yScale(d[0]); })
+            .y1(function(d) { return yScale(d[1]); })
+            .curve(d3.curveMonotoneX);
+
+        series.forEach(function(s, i) {
+            plotArea.append('path').datum(s)
+                .attr('fill', colors[i])
+                .attr('opacity', 0.7)
+                .attr('stroke', colors[i])
+                .attr('stroke-width', 0.5)
+                .attr('d', areaGen);
+        });
+
+        const legendItems = keys.map(function(k, i) { return {label: labels[i], color: colors[i]}; });
+        addLegend(ctx.svg, legendItems, ctx.m.left, ctx.m.top - 14);
+
+        // Hover
+        var bisectArea = d3.bisector(function(d) { return d._date; }).left;
+        var areaHoverLine = plotArea.append('line')
+            .attr('stroke', '#9ca3af').attr('stroke-width', 1).attr('stroke-dasharray', '3,3')
+            .attr('y1', 0).attr('y2', ctx.h).style('opacity', 0);
+
+        ctx.g.append('rect').attr('width', ctx.w).attr('height', ctx.h)
+            .attr('fill', 'none').attr('pointer-events', 'all')
+            .on('mousemove', function(event) {
+                var mx = d3.pointer(event)[0];
+                var x0 = xScale.invert(mx);
+                var idx = bisectArea(data, x0, 1);
+                var d0 = data[idx - 1], d1 = data[idx];
+                if (!d0) return;
+                var d = (!d1 || x0 - d0._date > d1._date - x0) ? d1 || d0 : d0;
+                var px = xScale(d._date);
+                areaHoverLine.attr('x1', px).attr('x2', px).style('opacity', 1);
+                var html = '<div class="tt-label">' + fmtDate(d._date) + '</div>';
+                var total = 0;
+                keys.forEach(function(k, ki) {
+                    var v = d[k] || 0;
+                    total += v;
+                    html += '<div class="tt-row"><span class="tt-swatch" style="background:' + colors[ki] + '"></span><span class="tt-value">' + fmtDec1(v) + '</span> ' + labels[ki] + '</div>';
+                });
+                html += '<div style="border-top:1px solid rgba(255,255,255,0.2);margin-top:4px;padding-top:4px"><span class="tt-value">' + fmtDec1(total) + '</span> Total</div>';
+                showTip(html, event);
+            })
+            .on('mouseleave', function() {
+                areaHoverLine.style('opacity', 0);
+                hideTip();
+            });
+
+        // Brush
+        if (opts.brush !== false) {
+            addBrush(ctx, xScale, fullDomain, function(domain) {
+                xScale.domain(domain);
+                xAxisG.call(d3.axisBottom(xScale).ticks(6).tickSizeOuter(0));
+                plotArea.selectAll('path').attr('d', areaGen);
+            });
+        }
+
+        return {resize: function() {
+            const nw = d3.select(sel).node().clientWidth;
+            if (nw <= 0) return;
+            ctx.svg.attr('width', nw).attr('viewBox', `0 0 ${nw} ${ctx.totalH}`);
+        }};
+    }
+
+    // ──────────────────────────────────────────────────────
+    // HC.heatmap — GitHub-style calendar heatmap
+    // ──────────────────────────────────────────────────────
+    function heatmap(sel, rawData, opts) {
+        if (!rawData || !rawData.length) {
+            d3.select(sel).html('<div class="hc-no-data">No data</div>');
+            return {resize: function(){}};
+        }
+        const valKey = opts.valueKey || 'total_min';
+
+        // Build flat array of {date, val} from rawData, sorted by date
+        const flat = rawData.map(function(d) {
+            return {date: parseDate(d.date) || new Date(d.date + 'T00:00:00'), val: d[valKey] || 0, dateStr: d.date};
+        }).sort(function(a, b) { return a.date - b.date; });
+
+        const minDate = flat[0].date, maxDate = flat[flat.length - 1].date;
+
+        // Build a date→entry lookup using the original date string as key
+        const lookup = {};
+        flat.forEach(function(d) { lookup[d.dateStr] = d; });
+
+        // Align to Monday and build week grid
+        const start = d3.timeMonday.floor(minDate);
+        const weeks = [];
+        const weekLabels = [];
+        let cur = new Date(start);
+        while (cur <= maxDate) {
+            const wk = [];
+            for (let dow = 0; dow < 7; dow++) {
+                const d = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + dow);
+                const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                const entry = lookup[key];
+                wk.push({date: d, key: key, val: (d >= minDate && d <= maxDate) ? (entry ? entry.val : 0) : null});
+            }
+            weeks.push(wk);
+            weekLabels.push(d3.timeFormat('%b %d')(cur));
+            cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 7);
+        }
+
+        const cellSize = Math.max(8, Math.min(14, (d3.select(sel).node().clientWidth - 100) / weeks.length));
+        const h = cellSize * 7 + 80;
+        const m = {top: 44, right: 20, bottom: 20, left: 44};
+
+        const ctx = mkSvg(sel, Object.assign({}, opts, {height: h, margin: m}));
+        if (!ctx) return {resize: function(){}};
+
+        const maxVal = d3.max(rawData, function(d) { return d[valKey]; }) || 1;
+        const colorScale = d3.scaleSequential()
+            .domain([0, maxVal])
+            .interpolator(function(t) {
+                if (t === 0) return '#ebedf0';
+                return d3.interpolateGreens(0.2 + t * 0.8);
+            });
+
+        const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        dayNames.forEach(function(name, i) {
+            if (i % 2 === 0) {
+                ctx.g.append('text').attr('x', -8).attr('y', i * (cellSize + 1) + cellSize / 2)
+                    .attr('text-anchor', 'end').attr('dominant-baseline', 'middle')
+                    .attr('font-size', '10px').attr('fill', '#6b7280').text(name);
+            }
+        });
+
+        weeks.forEach(function(wk, wi) {
+            wk.forEach(function(cell, di) {
+                if (cell.val === null) return;
+                ctx.g.append('rect')
+                    .attr('x', wi * (cellSize + 1))
+                    .attr('y', di * (cellSize + 1))
+                    .attr('width', cellSize)
+                    .attr('height', cellSize)
+                    .attr('rx', 2)
+                    .attr('fill', colorScale(cell.val))
+                    .on('mouseover', function(event) {
+                        if (opts.tooltipFmt) {
+                            showTip(opts.tooltipFmt(cell.key, cell.val), event);
+                        } else {
+                            showTip(
+                                '<div class="tt-label">' + fmtDate(cell.date) + '</div>' +
+                                '<div class="tt-value">' + Math.round(cell.val) + ' min</div>',
+                                event
+                            );
+                        }
+                    })
+                    .on('mouseleave', hideTip);
+            });
+        });
+
+        return {resize: function() {
+            const nw = d3.select(sel).node().clientWidth;
+            if (nw <= 0) return;
+            ctx.svg.attr('width', nw).attr('viewBox', `0 0 ${nw} ${ctx.totalH}`);
+        }};
+    }
+
+    // ──────────────────────────────────────────────────────
+    // HC.multiAxis — multi-y-axis line chart (activity rings)
+    // ──────────────────────────────────────────────────────
+    function multiAxis(sel, rawData, opts) {
+        if (!rawData || !rawData.length) {
+            d3.select(sel).html('<div class="hc-no-data">No data</div>');
+            return {resize: function(){}};
+        }
+        const data = rawData.map(function(d) {
+            const o = Object.assign({}, d);
+            o._date = parseDate(d.date) || new Date(d.date);
+            return o;
+        });
+
+        const axes = opts.axes; // [{key, color, label, goalKey?}]
+        const m = {top: 44, right: 70, bottom: 60, left: 60};
+        const ctx = mkSvg(sel, Object.assign({}, opts, {margin: m}));
+        if (!ctx) return {resize: function(){}};
+
+        const fullDomain = d3.extent(data, function(d) { return d._date; });
+        const xScale = d3.scaleTime().domain(fullDomain).range([0, ctx.w]);
+        const xAxisG = addXAxis(ctx.g, xScale, ctx.h);
+
+        const clipId = 'clip-' + sel.replace(/[^a-z0-9]/gi, '');
+        ctx.svg.append('defs').append('clipPath').attr('id', clipId)
+            .append('rect').attr('width', ctx.w).attr('height', ctx.h);
+        const plotArea = ctx.g.append('g').attr('clip-path', 'url(#' + clipId + ')');
+
+        const lineGens = [];
+        axes.forEach(function(ax, i) {
+            const vals = data.map(function(d) { return d[ax.key]; }).filter(function(v) { return v != null; });
+            const yScale = d3.scaleLinear()
+                .domain([0, d3.max(vals) * 1.1])
+                .range([ctx.h, 0]).nice();
+
+            // Y-axis (only first on left, rest on right)
+            if (i === 0) {
+                ctx.g.append('g').attr('class', 'axis')
+                    .call(d3.axisLeft(yScale).ticks(5).tickSizeOuter(0))
+                    .selectAll('text').attr('fill', ax.color);
+            } else {
+                const offset = i === 1 ? ctx.w : ctx.w + 40;
+                ctx.g.append('g').attr('class', 'axis')
+                    .attr('transform', `translate(${offset},0)`)
+                    .call(d3.axisRight(yScale).ticks(4).tickSizeOuter(0))
+                    .selectAll('text').attr('fill', ax.color);
+            }
+
+            // Goal line (follows goal value per day — dashed trace)
+            if (ax.goalKey) {
+                var goalHasData = data.some(function(d) { return d[ax.goalKey] != null && d[ax.goalKey] > 0; });
+                if (goalHasData) {
+                    // Extend y-scale to include goal values
+                    var goalMax = d3.max(data, function(d) { return d[ax.goalKey] || 0; });
+                    if (goalMax > yScale.domain()[1]) {
+                        yScale.domain([0, goalMax * 1.1]).nice();
+                    }
+                    var goalGen = d3.line()
+                        .defined(function(d) { return d[ax.goalKey] != null; })
+                        .x(function(d) { return xScale(d._date); })
+                        .y(function(d) { return yScale(d[ax.goalKey]); })
+                        .curve(d3.curveStepAfter);
+                    plotArea.append('path').datum(data)
+                        .attr('fill', 'none')
+                        .attr('stroke', ax.color)
+                        .attr('stroke-width', 1.5)
+                        .attr('stroke-dasharray', '6,4')
+                        .attr('opacity', 0.45)
+                        .attr('d', goalGen);
+                }
+            }
+
+            const gen = d3.line()
+                .defined(function(d) { return d[ax.key] != null; })
+                .x(function(d) { return xScale(d._date); })
+                .y(function(d) { return yScale(d[ax.key]); })
+                .curve(d3.curveMonotoneX);
+            lineGens.push(gen);
+
+            plotArea.append('path').datum(data)
+                .attr('fill', 'none')
+                .attr('stroke', ax.color)
+                .attr('stroke-width', 1.5)
+                .attr('d', gen);
+        });
+
+        const legendItems = [];
+        axes.forEach(function(ax) {
+            legendItems.push({label: ax.label, color: ax.color});
+        });
+        legendItems.push({label: 'Goal (dashed)', color: '#9ca3af'});
+        addLegend(ctx.svg, legendItems, ctx.m.left, ctx.m.top - 14);
+
+        // Hover
+        var bisectMulti = d3.bisector(function(d) { return d._date; }).left;
+        var multiHoverLine = plotArea.append('line')
+            .attr('stroke', '#9ca3af').attr('stroke-width', 1).attr('stroke-dasharray', '3,3')
+            .attr('y1', 0).attr('y2', ctx.h).style('opacity', 0);
+        var multiDots = axes.map(function(ax) {
+            return plotArea.append('circle').attr('r', 4).attr('fill', ax.color)
+                .attr('stroke', '#fff').attr('stroke-width', 2).style('opacity', 0);
+        });
+        // Build per-axis y-scales (recreate since they were local to forEach — include goals)
+        var multiYScales = axes.map(function(ax) {
+            var vals = data.map(function(d) { return d[ax.key]; }).filter(function(v) { return v != null; });
+            var maxVal = d3.max(vals) * 1.1;
+            if (ax.goalKey) {
+                var goalMax = d3.max(data, function(d) { return d[ax.goalKey] || 0; });
+                if (goalMax > maxVal) maxVal = goalMax * 1.1;
+            }
+            return d3.scaleLinear().domain([0, maxVal]).range([ctx.h, 0]).nice();
+        });
+
+        ctx.g.append('rect').attr('width', ctx.w).attr('height', ctx.h)
+            .attr('fill', 'none').attr('pointer-events', 'all')
+            .on('mousemove', function(event) {
+                var mx = d3.pointer(event)[0];
+                var x0 = xScale.invert(mx);
+                var idx = bisectMulti(data, x0, 1);
+                var d0 = data[idx - 1], d1 = data[idx];
+                if (!d0) return;
+                var d = (!d1 || x0 - d0._date > d1._date - x0) ? d1 || d0 : d0;
+                var px = xScale(d._date);
+                multiHoverLine.attr('x1', px).attr('x2', px).style('opacity', 1);
+                var html = '<div class="tt-label">' + fmtDate(d._date) + '</div>';
+                axes.forEach(function(ax, ai) {
+                    if (d[ax.key] != null) {
+                        var v = fmtDec1(d[ax.key]);
+                        var goalStr = '';
+                        if (ax.goalKey && d[ax.goalKey]) {
+                            var met = d[ax.key] >= d[ax.goalKey];
+                            goalStr = ' <span style="opacity:0.6">/ ' + fmtDec1(d[ax.goalKey]) + ' goal</span>' + (met ? ' &#x2705;' : '');
+                        }
+                        html += '<div class="tt-row"><span class="tt-swatch" style="background:' + ax.color + '"></span><span class="tt-value">' + v + goalStr + '</span> ' + ax.label + '</div>';
+                        multiDots[ai].attr('cx', px).attr('cy', multiYScales[ai](d[ax.key])).style('opacity', 1);
+                    } else {
+                        multiDots[ai].style('opacity', 0);
+                    }
+                });
+                showTip(html, event);
+            })
+            .on('mouseleave', function() {
+                multiHoverLine.style('opacity', 0);
+                multiDots.forEach(function(dot) { dot.style('opacity', 0); });
+                hideTip();
+            });
+
+        // Brush
+        addBrush(ctx, xScale, fullDomain, function(domain) {
+            xScale.domain(domain);
+            xAxisG.call(d3.axisBottom(xScale).ticks(6).tickSizeOuter(0));
+            plotArea.selectAll('path').each(function(d, i) {
+                if (lineGens[i]) d3.select(this).attr('d', lineGens[i]);
+            });
+        });
+
+        return {resize: function() {
+            const nw = d3.select(sel).node().clientWidth;
+            if (nw <= 0) return;
+            ctx.svg.attr('width', nw).attr('viewBox', `0 0 ${nw} ${ctx.totalH}`);
+        }};
+    }
+
+    // ──────────────────────────────────────────────────────
+    // HC.subplots — 2x2 grid of mini scatter charts
+    // ──────────────────────────────────────────────────────
+    function subplots(sel, configs) {
+        if (!configs || !configs.length) {
+            d3.select(sel).html('<div class="hc-no-data">No data</div>');
+            return {resize: function(){}};
+        }
+        const el = d3.select(sel);
+        const container = el.append('div').style('display', 'grid')
+            .style('grid-template-columns', '1fr 1fr').style('gap', '8px');
+
+        const charts = [];
+        configs.forEach(function(cfg) {
+            const div = container.append('div').attr('class', 'hc-chart');
+            const id = 'sp-' + Math.random().toString(36).substr(2, 6);
+            div.attr('id', id);
+
+            if (!cfg.data || !cfg.data.length) {
+                div.html('<div class="hc-no-data" style="padding:24px">No data</div>');
+                return;
+            }
+
+            const m = {top: 32, right: 16, bottom: 32, left: 48};
+            const h = 220;
+            const w = div.node().clientWidth || 300;
+            const svg = div.append('svg').attr('width', w).attr('height', h)
+                .attr('viewBox', `0 0 ${w} ${h}`);
+            const g = svg.append('g').attr('transform', `translate(${m.left},${m.top})`);
+            const iw = w - m.left - m.right, ih = h - m.top - m.bottom;
+
+            svg.append('text').attr('class', 'title')
+                .attr('x', m.left).attr('y', 20)
+                .attr('font-size', '12px').attr('font-weight', '600').attr('fill', '#1a1a2e')
+                .text(cfg.title || '');
+
+            const xVals = cfg.data.map(function(d) { return d[cfg.xKey]; }).filter(function(v) { return v != null; });
+            const yVals = cfg.data.map(function(d) { return d[cfg.yKey]; }).filter(function(v) { return v != null; });
+            if (!xVals.length || !yVals.length) return;
+
+            const isTimeX = cfg.xType === 'time';
+            const parsedData = cfg.data.filter(function(d) { return d[cfg.xKey] != null && d[cfg.yKey] != null; });
+            parsedData.forEach(function(d) {
+                if (isTimeX) d._date = parseDate(d.date || d[cfg.xKey]) || new Date(d[cfg.xKey]);
+            });
+
+            const xScale = isTimeX
+                ? d3.scaleTime().domain(d3.extent(parsedData, function(d) { return d._date; })).range([0, iw])
+                : d3.scaleLinear().domain(d3.extent(parsedData, function(d) { return d[cfg.xKey]; })).range([0, iw]).nice();
+            const yScale = d3.scaleLinear().domain(d3.extent(parsedData, function(d) { return d[cfg.yKey]; })).range([ih, 0]).nice();
+
+            g.append('g').attr('class', 'axis').attr('transform', `translate(0,${ih})`)
+                .call(d3.axisBottom(xScale).ticks(4).tickSizeOuter(0));
+            g.append('g').attr('class', 'axis').call(d3.axisLeft(yScale).ticks(4).tickSizeOuter(0));
+
+            // Axis labels
+            if (cfg.xLabel) g.append('text').attr('x', iw / 2).attr('y', ih + 28)
+                .attr('text-anchor', 'middle').attr('font-size', '10px').attr('fill', '#6b7280').text(cfg.xLabel);
+            if (cfg.yLabel) g.append('text').attr('transform', 'rotate(-90)')
+                .attr('x', -ih / 2).attr('y', -36).attr('text-anchor', 'middle')
+                .attr('font-size', '10px').attr('fill', '#6b7280').text(cfg.yLabel);
+
+            g.selectAll('.dot').data(parsedData).enter().append('circle')
+                .attr('cx', function(d) { return isTimeX ? xScale(d._date) : xScale(d[cfg.xKey]); })
+                .attr('cy', function(d) { return yScale(d[cfg.yKey]); })
+                .attr('r', 3)
+                .attr('fill', cfg.color || '#6366f1')
+                .attr('opacity', 0.5)
+                .on('mouseover', function(event, d) {
+                    d3.select(this).attr('opacity', 1).attr('r', 5).attr('stroke', '#fff').attr('stroke-width', 1.5);
+                    var xVal = isTimeX ? fmtDate(d._date) : (typeof d[cfg.xKey] === 'number' ? fmtDec1(d[cfg.xKey]) : d[cfg.xKey]);
+                    var yVal = typeof d[cfg.yKey] === 'number' ? fmtDec1(d[cfg.yKey]) : d[cfg.yKey];
+                    var html = '<div class="tt-label">' + (cfg.title || '') + '</div>';
+                    html += '<div class="tt-row"><span class="tt-value">' + xVal + '</span> ' + (cfg.xLabel || cfg.xKey) + '</div>';
+                    html += '<div class="tt-row"><span class="tt-value">' + yVal + '</span> ' + (cfg.yLabel || cfg.yKey) + '</div>';
+                    showTip(html, event);
+                })
+                .on('mouseleave', function() {
+                    d3.select(this).attr('opacity', 0.5).attr('r', 3).attr('stroke', 'none');
+                    hideTip();
+                });
+
+            charts.push({svg: svg, w: w, h: h});
+        });
+
+        return {resize: function() {
+            charts.forEach(function(c) {
+                const nw = c.svg.node().parentNode.clientWidth;
+                if (nw > 0) c.svg.attr('width', nw).attr('viewBox', `0 0 ${nw} ${c.h}`);
+            });
+        }};
+    }
+
+    // ──────────────────────────────────────────────────────
+    // HC.dayOfWeek — bar + dual lines for day-of-week patterns
+    // ──────────────────────────────────────────────────────
+    function dayOfWeek(sel, rawData, opts) {
+        if (!rawData || !rawData.length) {
+            d3.select(sel).html('<div class="hc-no-data">No data</div>');
+            return {resize: function(){}};
+        }
+        const m = {top: 44, right: 60, bottom: 36, left: 60};
+        const ctx = mkSvg(sel, Object.assign({}, opts, {margin: m}));
+        if (!ctx) return {resize: function(){}};
+
+        const xScale = d3.scaleBand()
+            .domain(rawData.map(function(d) { return d.day; }))
+            .range([0, ctx.w]).padding(0.25);
+
+        const yLeft = d3.scaleLinear()
+            .domain([0, d3.max(rawData, function(d) { return d.avg_steps; }) * 1.1])
+            .range([ctx.h, 0]).nice();
+        const yRight = d3.scaleLinear()
+            .domain([0, Math.max(
+                d3.max(rawData, function(d) { return d.avg_workout_min || 0; }),
+                d3.max(rawData, function(d) { return (d.avg_sleep_hrs || 0) * 10; })
+            ) * 1.1])
+            .range([ctx.h, 0]).nice();
+
+        addGrid(ctx.g, yLeft, ctx.w);
+        ctx.g.append('g').attr('class', 'axis').attr('transform', `translate(0,${ctx.h})`)
+            .call(d3.axisBottom(xScale).tickSizeOuter(0));
+        ctx.g.append('g').attr('class', 'axis')
+            .call(d3.axisLeft(yLeft).ticks(5).tickSizeOuter(0));
+        ctx.g.append('g').attr('class', 'axis').attr('transform', `translate(${ctx.w},0)`)
+            .call(d3.axisRight(yRight).ticks(5).tickSizeOuter(0));
+
+        // Bars
+        ctx.g.selectAll('.bar').data(rawData).enter().append('rect')
+            .attr('x', function(d) { return xScale(d.day); })
+            .attr('y', function(d) { return yLeft(d.avg_steps || 0); })
+            .attr('width', xScale.bandwidth())
+            .attr('height', function(d) { return ctx.h - yLeft(d.avg_steps || 0); })
+            .attr('fill', '#4CAF50').attr('opacity', 0.7).attr('rx', 3);
+
+        // Workout line
+        const workoutLine = d3.line()
+            .defined(function(d) { return d.avg_workout_min != null; })
+            .x(function(d) { return xScale(d.day) + xScale.bandwidth() / 2; })
+            .y(function(d) { return yRight(d.avg_workout_min); })
+            .curve(d3.curveMonotoneX);
+        ctx.g.append('path').datum(rawData).attr('fill', 'none')
+            .attr('stroke', '#2196F3').attr('stroke-width', 2).attr('d', workoutLine);
+        ctx.g.selectAll('.dot-w').data(rawData).enter().append('circle')
+            .attr('cx', function(d) { return xScale(d.day) + xScale.bandwidth() / 2; })
+            .attr('cy', function(d) { return yRight(d.avg_workout_min || 0); })
+            .attr('r', 3).attr('fill', '#2196F3');
+
+        // Sleep line
+        const sleepLine = d3.line()
+            .defined(function(d) { return d.avg_sleep_hrs != null; })
+            .x(function(d) { return xScale(d.day) + xScale.bandwidth() / 2; })
+            .y(function(d) { return yRight(d.avg_sleep_hrs * 10); })
+            .curve(d3.curveMonotoneX);
+        ctx.g.append('path').datum(rawData).attr('fill', 'none')
+            .attr('stroke', '#673AB7').attr('stroke-width', 2)
+            .attr('stroke-dasharray', '6,3').attr('d', sleepLine);
+        ctx.g.selectAll('.dot-s').data(rawData).enter().append('circle')
+            .attr('cx', function(d) { return xScale(d.day) + xScale.bandwidth() / 2; })
+            .attr('cy', function(d) { return yRight((d.avg_sleep_hrs || 0) * 10); })
+            .attr('r', 3).attr('fill', '#673AB7');
+
+        addLegend(ctx.svg, [
+            {label: 'Avg Steps', color: '#4CAF50'},
+            {label: 'Workout (min)', color: '#2196F3'},
+            {label: 'Sleep (hrs)', color: '#673AB7'},
+        ], ctx.m.left, ctx.m.top - 14);
+
+        // Hover rects per band column
+        ctx.g.selectAll('.hover-band').data(rawData).enter().append('rect')
+            .attr('class', 'hover-band')
+            .attr('x', function(d) { return xScale(d.day); })
+            .attr('y', 0)
+            .attr('width', xScale.bandwidth())
+            .attr('height', ctx.h)
+            .attr('fill', 'none').attr('pointer-events', 'all')
+            .on('mouseover', function(event, d) {
+                d3.select(this).attr('fill', 'rgba(0,0,0,0.04)');
+                var html = '<div class="tt-label">' + d.day + '</div>';
+                html += '<div class="tt-row"><span class="tt-swatch" style="background:#4CAF50"></span><span class="tt-value">' + fmtNum(Math.round(d.avg_steps || 0)) + '</span> steps</div>';
+                html += '<div class="tt-row"><span class="tt-swatch" style="background:#2196F3"></span><span class="tt-value">' + fmtDec1(d.avg_workout_min || 0) + '</span> workout min</div>';
+                html += '<div class="tt-row"><span class="tt-swatch" style="background:#673AB7"></span><span class="tt-value">' + fmtDec1(d.avg_sleep_hrs || 0) + '</span> sleep hrs</div>';
+                showTip(html, event);
+            })
+            .on('mouseleave', function() {
+                d3.select(this).attr('fill', 'none');
+                hideTip();
+            });
+
+        return {resize: function() {
+            const nw = d3.select(sel).node().clientWidth;
+            if (nw <= 0) return;
+            ctx.svg.attr('width', nw).attr('viewBox', `0 0 ${nw} ${ctx.totalH}`);
+        }};
+    }
+
+    // ──────────────────────────────────────────────────────
+    // HC.sleepDuration — dual-source bar + quality line
+    // ──────────────────────────────────────────────────────
+    function sleepDuration(sel, rawData, opts) {
+        if (!rawData || !rawData.length) {
+            d3.select(sel).html('<div class="hc-no-data">No data</div>');
+            return {resize: function(){}};
+        }
+        const data = rawData.map(function(d) {
+            const o = Object.assign({}, d);
+            o._date = parseDate(d.date) || new Date(d.date);
+            return o;
+        });
+
+        const sc = data.filter(function(d) { return d.source === 'sleep_cycle'; });
+        const ah = data.filter(function(d) { return d.source === 'apple_health'; });
+
+        const m = {top: 44, right: 56, bottom: 60, left: 56};
+        const ctx = mkSvg(sel, Object.assign({}, opts, {margin: m}));
+        if (!ctx) return {resize: function(){}};
+
+        const fullDomain = d3.extent(data, function(d) { return d._date; });
+        const xScale = d3.scaleTime().domain(fullDomain).range([0, ctx.w]);
+        const barW = Math.max(1, ctx.w / data.length - 1);
+
+        const yMax = d3.max(data, function(d) { return d.hours || 0; }) * 1.1;
+        const yScale = d3.scaleLinear().domain([0, yMax]).range([ctx.h, 0]).nice();
+        const yRight = d3.scaleLinear().domain([0, 100]).range([ctx.h, 0]);
+
+        addGrid(ctx.g, yScale, ctx.w);
+        const xAxisG = addXAxis(ctx.g, xScale, ctx.h);
+        addYAxis(ctx.g, yScale, 'Hours');
+        ctx.g.append('g').attr('class', 'axis').attr('transform', `translate(${ctx.w},0)`)
+            .call(d3.axisRight(yRight).ticks(5).tickSizeOuter(0));
+
+        const clipId = 'clip-' + sel.replace(/[^a-z0-9]/gi, '');
+        ctx.svg.append('defs').append('clipPath').attr('id', clipId)
+            .append('rect').attr('width', ctx.w).attr('height', ctx.h);
+        const plotArea = ctx.g.append('g').attr('clip-path', 'url(#' + clipId + ')');
+
+        // SleepCycle bars
+        plotArea.selectAll('.bar-sc').data(sc).enter().append('rect')
+            .attr('x', function(d) { return xScale(d._date) - barW / 2; })
+            .attr('y', function(d) { return yScale(d.hours || 0); })
+            .attr('width', barW)
+            .attr('height', function(d) { return ctx.h - yScale(d.hours || 0); })
+            .attr('fill', '#673AB7').attr('opacity', 0.7);
+
+        // Apple Health bars
+        plotArea.selectAll('.bar-ah').data(ah).enter().append('rect')
+            .attr('x', function(d) { return xScale(d._date) - barW / 2; })
+            .attr('y', function(d) { return yScale(d.hours || 0); })
+            .attr('width', barW)
+            .attr('height', function(d) { return ctx.h - yScale(d.hours || 0); })
+            .attr('fill', '#9C27B0').attr('opacity', 0.5);
+
+        // Quality line
+        const qualData = sc.filter(function(d) { return d.quality != null; });
+        if (qualData.length) {
+            const qualLine = d3.line()
+                .x(function(d) { return xScale(d._date); })
+                .y(function(d) { return yRight(d.quality * 100); })
+                .curve(d3.curveMonotoneX);
+            plotArea.append('path').datum(qualData).attr('fill', 'none')
+                .attr('stroke', '#FF9800').attr('stroke-width', 2).attr('d', qualLine);
+        }
+
+        addLegend(ctx.svg, [
+            {label: 'SleepCycle', color: '#673AB7'},
+            {label: 'Apple Health', color: '#9C27B0'},
+            {label: 'Quality %', color: '#FF9800'},
+        ], ctx.m.left, ctx.m.top - 14);
+
+        // Hover
+        var bisectSleep = d3.bisector(function(d) { return d._date; }).left;
+        ctx.g.append('rect').attr('width', ctx.w).attr('height', ctx.h)
+            .attr('fill', 'none').attr('pointer-events', 'all')
+            .on('mousemove', function(event) {
+                var mx = d3.pointer(event)[0];
+                var x0 = xScale.invert(mx);
+                var i = bisectSleep(data, x0, 1);
+                var d0 = data[i - 1], d1 = data[i];
+                if (!d0) return;
+                var d = (!d1 || x0 - d0._date > d1._date - x0) ? d1 || d0 : d0;
+                var srcColor = d.source === 'sleep_cycle' ? '#673AB7' : '#9C27B0';
+                var srcLabel = d.source === 'sleep_cycle' ? 'SleepCycle' : 'Apple Health';
+                var html = '<div class="tt-label">' + fmtDate(d._date) + '</div>';
+                html += '<div class="tt-row"><span class="tt-swatch" style="background:' + srcColor + '"></span><span class="tt-value">' + fmtDec1(d.hours || 0) + ' hrs</span> ' + srcLabel + '</div>';
+                if (d.quality != null) {
+                    html += '<div class="tt-row"><span class="tt-swatch" style="background:#FF9800"></span><span class="tt-value">' + Math.round(d.quality * 100) + '%</span> Quality</div>';
+                }
+                showTip(html, event);
+            })
+            .on('mouseleave', hideTip);
+
+        // Brush
+        addBrush(ctx, xScale, fullDomain, function(domain) {
+            xScale.domain(domain);
+            xAxisG.call(d3.axisBottom(xScale).ticks(6).tickSizeOuter(0));
+            const newBarW = Math.max(1, ctx.w / data.filter(function(d) {
+                return d._date >= domain[0] && d._date <= domain[1];
+            }).length - 1);
+            plotArea.selectAll('rect')
+                .attr('x', function(d) { return xScale(d._date) - newBarW / 2; })
+                .attr('width', newBarW);
+        });
+
+        return {resize: function() {
+            const nw = d3.select(sel).node().clientWidth;
+            if (nw <= 0) return;
+            ctx.svg.attr('width', nw).attr('viewBox', `0 0 ${nw} ${ctx.totalH}`);
+        }};
+    }
+
+    return {
+        timeLine: timeLine,
+        timeBar: timeBar,
+        hBar: hBar,
+        scatter: scatter,
+        stackedBar: stackedBar,
+        stackedArea: stackedArea,
+        heatmap: heatmap,
+        multiAxis: multiAxis,
+        subplots: subplots,
+        dayOfWeek: dayOfWeek,
+        sleepDuration: sleepDuration,
+    };
+})();
+</script>
+
+<!-- Chart Initialization -->
+<script>
+(function() {
+    var D = window.HEALTH_DATA;
+    var charts = {};        // rendered chart instances {name: {resize()}}
+    var pending = {};       // deferred init functions {tabId: [fn, fn, ...]}
+    var initialized = {};   // which tabs have been initialized
+
+    function reg(tabId, fn) {
+        if (!pending[tabId]) pending[tabId] = [];
+        pending[tabId].push(fn);
+    }
+
+    function initTab(tabId) {
+        if (initialized[tabId]) return;
+        initialized[tabId] = true;
+        if (pending[tabId]) {
+            pending[tabId].forEach(function(fn) { fn(); });
+            delete pending[tabId];
+        }
+        // Hide chart cards that rendered "No data"
+        var tab = document.getElementById('tab-' + tabId);
+        if (tab) {
+            tab.querySelectorAll('.chart-card').forEach(function(card) {
+                var noData = card.querySelector('.hc-no-data');
+                if (noData) card.style.display = 'none';
+            });
+        }
+    }
+
+    // ── OVERVIEW (visible on load — init immediately) ──
+    if (D.day_of_week && D.day_of_week.length) {
+        charts.dow = HC.dayOfWeek('#chart-dow', D.day_of_week, {
+            title: 'Day-of-Week Patterns', height: 350
+        });
+    }
+    initialized.overview = true;
+
+    // ── VITALS (deferred) ──
+    reg('vitals', function() {
+        if (D.steps && D.steps.length) {
+            charts.steps = HC.timeBar('#chart-steps', D.steps, {
+                title: 'Daily Steps', yKey: 'steps', maKey: 'steps_7d_avg',
+                barColor: '#4CAF50', maColor: '#FF5722',
+                barLabel: 'Steps', maLabel: '7-Day Avg',
+                yLabel: 'Steps', height: 350,
+                threshold: {value: 10000, color: '#9E9E9E', label: '10K Goal'}
+            });
+        }
+        if (D.heart_rate && D.heart_rate.length) {
+            charts.hr = HC.timeLine('#chart-hr', D.heart_rate, {
+                title: 'Heart Rate', height: 350, yLabel: 'BPM',
+                lines: [
+                    {key: 'resting_hr', color: '#E91E63', width: 2, label: 'Resting HR'}
+                ],
+                band: {upper: 'max_hr', lower: 'min_hr', color: 'rgba(233,30,99,0.15)'}
+            });
+        }
+        if (D.vo2max && D.vo2max.length) {
+            charts.vo2 = HC.timeLine('#chart-vo2max', D.vo2max, {
+                title: 'VO2 Max', height: 350, yLabel: 'mL/kg/min',
+                lines: [
+                    {key: 'val', color: '#00BCD4', width: 1, opacity: 0.5, label: 'VO2Max'},
+                    {key: 'ma', color: '#00838F', width: 2.5, label: '30-Day Avg'}
+                ]
+            });
+        }
+        if (D.hrv && D.hrv.length) {
+            charts.hrv = HC.timeLine('#chart-hrv', D.hrv, {
+                title: 'Heart Rate Variability', height: 350, yLabel: 'ms (SDNN)',
+                lines: [
+                    {key: 'val', color: '#8BC34A', width: 1, opacity: 0.4, label: 'HRV'},
+                    {key: 'ma', color: '#558B2F', width: 2.5, label: '7-Day Avg'}
+                ]
+            });
+        }
+        if (D.respiratory && D.respiratory.length) {
+            charts.resp = HC.timeLine('#chart-respiratory', D.respiratory, {
+                title: 'Respiratory Rate', height: 350, yLabel: 'breaths/min',
+                lines: [
+                    {key: 'val', color: '#78909C', width: 1, opacity: 0.4, label: 'Rate'},
+                    {key: 'ma', color: '#455A64', width: 2.5, label: '7-Day Avg'}
+                ]
+            });
+        }
+        if (D.spo2 && D.spo2.length) {
+            charts.spo2 = HC.timeLine('#chart-spo2', D.spo2, {
+                title: 'Blood Oxygen (SpO2)', height: 350, yLabel: '%',
+                yMin: 88, yMax: 101,
+                lines: [
+                    {key: 'avg_pct', color: '#42A5F5', width: 2, label: 'Avg SpO2'}
+                ],
+                band: {upper: 'avg_pct', lower: 'min_pct', color: 'rgba(66,165,245,0.2)'},
+                threshold: {value: 95, color: '#FF5722'}
+            });
+        }
+        if (D.weight && D.weight.length) {
+            charts.weight = HC.timeLine('#chart-weight', D.weight, {
+                title: 'Body Weight', height: 350, yLabel: 'lbs',
+                lines: [
+                    {key: 'weight', color: '#8D6E63', width: 2, label: 'Weight'}
+                ]
+            });
+        }
+        if (D.bmi && D.bmi.length) {
+            charts.bmi = HC.timeLine('#chart-bmi', D.bmi, {
+                title: 'BMI', height: 300, yLabel: 'BMI',
+                lines: [{key: 'bmi', color: '#FF9800', width: 1.5, label: 'BMI'},
+                        {key: 'bmi_7d_avg', color: '#E91E63', width: 2, label: '7-day Avg'}],
+                band: {upper: 'bmi_7d_avg', lower: 'bmi_7d_avg', color: 'transparent'},
+                threshold: {value: 24.9, color: '#4CAF50'}
+            });
+        }
+        if (D.hr_zones && D.hr_zones.length) {
+            // Reshape to stacked bar format (one row per zone per week)
+            var zoneRows = [];
+            var zoneNames = ['rest', 'fat_burn', 'cardio', 'peak', 'max_zone'];
+            var zoneLabels = {'rest': 'Rest', 'fat_burn': 'Fat Burn', 'cardio': 'Cardio', 'peak': 'Peak', 'max_zone': 'Max'};
+            D.hr_zones.forEach(function(w) {
+                zoneNames.forEach(function(z) {
+                    if (w[z] > 0) zoneRows.push({week: w.week, type: zoneLabels[z], count: w[z]});
+                });
+            });
+            if (zoneRows.length) {
+                charts.hrZones = HC.stackedBar('#chart-hr-zones', zoneRows, {
+                    title: 'Heart Rate Zones (Weekly Minutes)', height: 350, yLabel: 'Minutes'
+                });
+            }
+        }
+    });
+
+    // ── SLEEP (deferred) ──
+    reg('sleep', function() {
+        if (D.sleep_score && D.sleep_score.length) {
+            charts.sleepScore = HC.timeLine('#chart-sleep-score', D.sleep_score, {
+                title: 'Sleep Score', height: 300, yLabel: 'Score', yMin: 0, yMax: 100,
+                lines: [{key: 'score', color: '#673AB7', width: 1.5, label: 'Score'},
+                        {key: 'score_7d_avg', color: '#FF5722', width: 2, label: '7-day Avg'}],
+                threshold: {value: 80, color: '#9E9E9E'}
+            });
+        }
+        if (D.sleep && D.sleep.length) {
+            charts.sleep = HC.sleepDuration('#chart-sleep', D.sleep, {
+                title: 'Sleep Duration', height: 350
+            });
+        }
+        if (D.sleep_stages && D.sleep_stages.length) {
+            charts.stages = HC.stackedArea('#chart-sleep-stages', D.sleep_stages, {
+                title: 'Sleep Architecture', height: 350, yLabel: 'Hours',
+                keys: ['deep', 'light', 'rem', 'awake'],
+                colors: ['#1A237E', '#42A5F5', '#7E57C2', '#FF7043'],
+                labels: ['Deep', 'Light', 'REM', 'Awake']
+            });
+        }
+        if (D.sleep_efficiency && D.sleep_efficiency.length) {
+            charts.sleepEff = HC.timeLine('#chart-sleep-efficiency', D.sleep_efficiency, {
+                title: 'Sleep Efficiency', height: 300, yLabel: '%', yMin: 50, yMax: 100,
+                lines: [{key: 'val', color: '#4CAF50', width: 1.5, label: 'Efficiency %'},
+                        {key: 'ma', color: '#FF5722', width: 2, label: '7-day Avg'}],
+                threshold: {value: 85, color: '#9E9E9E'}
+            });
+        }
+        if (D.sleep_regularity && D.sleep_regularity.length) {
+            charts.sleepReg = HC.timeLine('#chart-sleep-regularity', D.sleep_regularity, {
+                title: 'Sleep Regularity', height: 300, yLabel: '%', yMin: 0, yMax: 100,
+                lines: [{key: 'val', color: '#7E57C2', width: 1.5, label: 'Regularity %'},
+                        {key: 'ma', color: '#FF5722', width: 2, label: '7-day Avg'}]
+            });
+        }
+        if (D.sleep_latency && D.sleep_latency.length) {
+            charts.sleepLat = HC.timeBar('#chart-sleep-latency', D.sleep_latency, {
+                title: 'Time to Fall Asleep', height: 300, yLabel: 'Minutes',
+                yKey: 'val', maKey: 'ma', barColor: '#42A5F5', maColor: '#FF5722',
+                barLabel: 'Latency', maLabel: '7-day Avg'
+            });
+        }
+        if (D.snore && D.snore.length) {
+            charts.snore = HC.timeBar('#chart-snore', D.snore, {
+                title: 'Snore Time', height: 300, yLabel: 'Minutes',
+                yKey: 'val', maKey: 'ma', barColor: '#FF7043', maColor: '#D32F2F',
+                barLabel: 'Snore Time', maLabel: '7-day Avg'
+            });
+        }
+        if (D.sleep_hr && D.sleep_hr.length) {
+            charts.sleepHr = HC.timeLine('#chart-sleep-hr', D.sleep_hr, {
+                title: 'Sleep vs Resting Heart Rate', height: 300, yLabel: 'BPM',
+                lines: [{key: 'sleep_hr', color: '#673AB7', width: 1.5, label: 'Sleep HR (SleepCycle)'},
+                        {key: 'resting_hr', color: '#E91E63', width: 2, label: 'Resting HR (Apple)'}]
+            });
+        }
+        if (D.sleep_environment && D.sleep_environment.length) {
+            var env = D.sleep_environment;
+            charts.sleepEnv = HC.subplots('#chart-sleep-environment', [
+                {data: env.filter(function(d) { return d.temp_f && d.quality; }),
+                 xKey: 'temp_f', yKey: 'quality',
+                 title: 'Temperature vs Quality', xLabel: 'Temperature (°F)', yLabel: 'Quality %', color: '#FF9800'},
+                {data: env.filter(function(d) { return d.movements && d.quality; }),
+                 xKey: 'movements', yKey: 'quality',
+                 title: 'Movement vs Quality', xLabel: 'Movements/hr', yLabel: 'Quality %', color: '#9C27B0'},
+                {data: env.filter(function(d) { return d.pressure && d.quality; }),
+                 xKey: 'pressure', yKey: 'quality',
+                 title: 'Pressure vs Quality', xLabel: 'Air Pressure (Pa)', yLabel: 'Quality %', color: '#00BCD4'},
+                {data: env.filter(function(d) { return d.temp_f && d.movements; }),
+                 xKey: 'temp_f', yKey: 'movements',
+                 title: 'Temperature vs Movement', xLabel: 'Temperature (°F)', yLabel: 'Movements/hr', color: '#4CAF50'}
+            ], {title: 'Sleep Environment', height: 400});
+        }
+        if (D.sleep_impact && D.sleep_impact.length) {
+            var imp = D.sleep_impact;
+            charts.sleepImpact = HC.subplots('#chart-sleep-impact', [
+                {data: imp.filter(function(d) { return d.sleep_hrs && d.resting_hr; }),
+                 xKey: 'sleep_hrs', yKey: 'resting_hr',
+                 title: 'Sleep → Next-Day HR', xLabel: 'Sleep (hrs)', yLabel: 'Resting HR', color: '#E91E63'},
+                {data: imp.filter(function(d) { return d.sleep_hrs && d.steps; }),
+                 xKey: 'sleep_hrs', yKey: 'steps',
+                 title: 'Sleep → Next-Day Steps', xLabel: 'Sleep (hrs)', yLabel: 'Steps', color: '#4CAF50'},
+                {data: imp.filter(function(d) { return d.sleep_quality && d.resting_hr; }),
+                 xKey: 'sleep_quality', yKey: 'resting_hr',
+                 title: 'Quality → Next-Day HR', xLabel: 'Quality %', yLabel: 'Resting HR', color: '#FF9800'}
+            ], {title: 'Sleep vs Next-Day Performance', height: 400});
+        }
+    });
+
+    // ── TRAINING (deferred) ──
+    reg('training', function() {
+        if (D.running_pace && D.running_pace.length) {
+            charts.pace = HC.scatter('#chart-pace', D.running_pace, {
+                title: 'Running Pace', height: 350,
+                xKey: 'date', xType: 'time',
+                yKey: 'pace_min_per_mi', yLabel: 'min/mi',
+                sizeKey: 'distance', sizeLabel: 'mi',
+                color: '#26A69A', invertY: true,
+                trend: true, trendColor: '#00796B'
+            });
+        }
+        if (D.running_distance && D.running_distance.length) {
+            charts.runDist = HC.timeBar('#chart-run-dist', D.running_distance, {
+                title: 'Running Distance', height: 350,
+                yKey: 'distance', barColor: '#00897B',
+                barLabel: 'Distance (mi)', yLabel: 'Miles',
+                brush: true
+            });
+        }
+        if (D.workout_types && D.workout_types.length) {
+            charts.types = HC.hBar('#chart-types', D.workout_types, {
+                title: 'Workouts by Type', color: '#2196F3',
+                labelKey: 'type', valueKey: 'count'
+            });
+        }
+        if (D.weekly_workouts && D.weekly_workouts.length) {
+            charts.weekly = HC.stackedBar('#chart-weekly', D.weekly_workouts, {
+                title: 'Weekly Workouts by Type', height: 350, yLabel: 'Workouts'
+            });
+        }
+        if (D.weekly_volume && D.weekly_volume.length) {
+            charts.volume = HC.stackedBar('#chart-volume', D.weekly_volume, {
+                title: 'Weekly Training Volume', height: 350,
+                yLabel: 'Minutes', valueKey: 'minutes'
+            });
+        }
+        if (D.cycling && D.cycling.length) {
+            charts.cycling = HC.scatter('#chart-cycling', D.cycling, {
+                title: 'Cycling Rides', height: 350,
+                xKey: 'date', xType: 'time',
+                yKey: 'distance', yLabel: 'Miles',
+                sizeKey: 'duration_min', sizeLabel: 'min',
+                color: '#7E57C2',
+                trend: true, trendColor: '#4A148C'
+            });
+        }
+        if (D.running_mechanics && D.running_mechanics.length) {
+            charts.mechanics = HC.subplots('#chart-mechanics', [
+                {data: D.running_mechanics, xKey: 'date', xType: 'time', yKey: 'power',
+                 title: 'Running Power', xLabel: 'Date', yLabel: 'Watts', color: '#FF7043'},
+                {data: D.running_mechanics, xKey: 'date', xType: 'time', yKey: 'gct',
+                 title: 'Ground Contact Time', xLabel: 'Date', yLabel: 'ms', color: '#42A5F5'},
+                {data: D.running_mechanics, xKey: 'date', xType: 'time', yKey: 'osc',
+                 title: 'Vertical Oscillation', xLabel: 'Date', yLabel: 'cm', color: '#66BB6A'},
+                {data: D.running_mechanics.filter(function(d) { return d.power && d.speed && d.speed > 0; }).map(function(d) {
+                    return {power: d.power, pace: Math.round(60 / d.speed * 10) / 10};
+                }), xKey: 'power', yKey: 'pace',
+                 title: 'Power vs Pace', xLabel: 'Power (W)', yLabel: 'min/mi', color: '#AB47BC'}
+            ]);
+        }
+        if (D.heatmap && D.heatmap.length) {
+            charts.heatmap = HC.heatmap('#chart-heatmap', D.heatmap, {
+                title: 'Workout Duration Heatmap', height: 220, valueKey: 'total_min'
+            });
+        }
+    });
+
+    // ── ACTIVITY (deferred) ──
+    reg('activity', function() {
+        if (D.activity_rings && D.activity_rings.length) {
+            charts.rings = HC.multiAxis('#chart-rings', D.activity_rings, {
+                title: 'Activity Rings', height: 380,
+                axes: [
+                    {key: 'energy', color: '#FF3B30', label: 'Move (kcal)', goalKey: 'energy_goal'},
+                    {key: 'exercise', color: '#4CD964', label: 'Exercise (min)', goalKey: 'exercise_goal'},
+                    {key: 'stand', color: '#007AFF', label: 'Stand (hrs)', goalKey: 'stand_goal'}
+                ]
+            });
+        }
+        if (D.walking_speed && D.walking_speed.length) {
+            charts.walking = HC.timeLine('#chart-walking', D.walking_speed, {
+                title: 'Walking Speed', height: 350, yLabel: 'mph',
+                lines: [
+                    {key: 'val', color: '#78909C', width: 1, opacity: 0.4, label: 'Speed'},
+                    {key: 'ma', color: '#37474F', width: 2.5, label: '14-Day Avg'}
+                ]
+            });
+        }
+        if (D.flights && D.flights.length) {
+            charts.flights = HC.timeBar('#chart-flights', D.flights, {
+                title: 'Flights Climbed', height: 350, yLabel: 'Flights',
+                yKey: 'val', maKey: 'ma',
+                barColor: '#FF8A65', maColor: '#BF360C',
+                barLabel: 'Flights', maLabel: '7-Day Avg'
+            });
+        }
+        if (D.correlation && D.correlation.dates && D.correlation.dates.length) {
+            var corrData = D.correlation;
+            var corrPairs = corrData.dates.map(function(d, i) {
+                return {
+                    date: d,
+                    sleep_hrs: corrData.sleep_hrs[i],
+                    resting_hr: corrData.resting_hr[i],
+                    steps: corrData.steps[i],
+                    sleep_quality: corrData.sleep_quality[i],
+                    workout_min: corrData.workout_min[i]
+                };
+            });
+            charts.corr = HC.subplots('#chart-correlation', [
+                {data: corrPairs.filter(function(d) { return d.sleep_hrs && d.resting_hr; }),
+                 xKey: 'sleep_hrs', yKey: 'resting_hr',
+                 title: 'Sleep vs Resting HR', xLabel: 'Sleep (hrs)', yLabel: 'Resting HR', color: '#673AB7'},
+                {data: corrPairs.filter(function(d) { return d.steps && d.resting_hr; }),
+                 xKey: 'steps', yKey: 'resting_hr',
+                 title: 'Steps vs Resting HR', xLabel: 'Steps', yLabel: 'Resting HR', color: '#4CAF50'},
+                {data: corrPairs.filter(function(d) { return d.workout_min && d.sleep_quality; }).map(function(d) {
+                    return {workout_min: d.workout_min, quality: d.sleep_quality * 100};
+                }),
+                 xKey: 'workout_min', yKey: 'quality',
+                 title: 'Workout vs Sleep Quality', xLabel: 'Workout (min)', yLabel: 'Quality %', color: '#FF9800'},
+                {data: corrPairs.filter(function(d) { return d.steps && d.sleep_hrs; }),
+                 xKey: 'steps', yKey: 'sleep_hrs',
+                 title: 'Steps vs Sleep', xLabel: 'Steps', yLabel: 'Sleep (hrs)', color: '#2196F3'}
+            ]);
+        }
+        // Rings Closed Calendar — reuse HC.heatmap with rings data
+    });
+
+    // ── TAB SWITCHING ──
+    window.switchTab = function(tabId) {
+        document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+        document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+        document.querySelector('[data-tab="' + tabId + '"]').classList.add('active');
+        document.getElementById('tab-' + tabId).classList.add('active');
+
+        // Update URL hash for deep-linking
+        if (history.replaceState) {
+            history.replaceState(null, '', '#' + tabId);
+        } else {
+            window.location.hash = tabId;
+        }
+
+        // Initialize charts for this tab on first view (tab must be visible for clientWidth)
+        setTimeout(function() {
+            initTab(tabId);
+            Object.values(charts).forEach(function(c) { if (c && c.resize) c.resize(); });
+        }, 20);
+
+        // Lazy init map
+        if (tabId === 'routes' && typeof initRouteMap === 'function' && !window._mapInitialized) {
+            initRouteMap();
+            window._mapInitialized = true;
+        }
+    };
+
+    // Deep-link: open tab from URL hash on load
+    (function() {
+        var hash = window.location.hash.replace('#', '');
+        var validTabs = ['overview', 'vitals', 'sleep', 'training', 'activity', 'routes'];
+        if (hash && validTabs.indexOf(hash) !== -1) {
+            switchTab(hash);
+        }
+    })();
+    window.addEventListener('hashchange', function() {
+        var hash = window.location.hash.replace('#', '');
+        var validTabs = ['overview', 'vitals', 'sleep', 'training', 'activity', 'routes'];
+        if (hash && validTabs.indexOf(hash) !== -1) {
+            switchTab(hash);
+        }
+    });
+
+    // Card tooltips — use the D3 tooltip system for [title] on hero/stat cards
+    d3.selectAll('.hero-card[title], .stat-card[title]').each(function() {
+        var el = d3.select(this);
+        var tipText = el.attr('title');
+        el.attr('title', null); // remove native title to prevent double tooltip
+        el.on('mouseenter', function(event) {
+            var label = el.select('.label').text().replace('i', '').trim();
+            showTip('<div class="tt-label">' + label + '</div><div style="margin-top:4px">' + tipText + '</div>', event);
+        }).on('mouseleave', hideTip);
+    });
+
+    // Global resize
+    var resizeTimer;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function() {
+            Object.values(charts).forEach(function(c) { if (c && c.resize) c.resize(); });
+        }, 150);
+    });
+})();
+</script>
+
+</body>
+</html>

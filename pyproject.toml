@@ -1,0 +1,156 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vitalog"
+version = "0.1.0"
+description = "Health data CLI — ETL Apple Health & SleepCycle into DuckDB, generate AI narratives, and build interactive dashboards."
+readme = { file = "README.md", content-type = "text/markdown" }
+license = { file = "LICENSE" }
+authors = [
+    { name = "Caleb Grant", email = "grantcaleb22@gmail.com" },
+]
+keywords = [
+    "health", "apple-health", "sleep", "dashboard", "ETL",
+    "duckdb", "cli", "narrative", "fitness", "quantified-self",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Healthcare Industry",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "anthropic>=0.40.0",
+    "duckdb>=1.2.0",
+    "gpxpy>=1.6.2",
+    "jinja2>=3.1.0",
+    "python-dotenv>=1.2.1",
+    "rich>=14.2.0",
+    "typer>=0.20.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "build>=1.3.0",
+    "bump-my-version>=1.2.7",
+    "pre-commit>=3.5.0",
+    "pytest>=8.0",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.14.5",
+    "tox-uv>=1.29.0",
+    "twine>=6.2.0",
+]
+
+[project.scripts]
+vitalog = "vitalog.__main__:app"
+
+[project.urls]
+Repository = "https://github.com/geocoug/vitalog"
+Issues = "https://github.com/geocoug/vitalog/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vitalog"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+respect-gitignore = true
+fix = true
+
+[tool.ruff.lint]
+select = [
+    "A",   # flake8-builtins
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "E",   # pycodestyle[error]
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "S",   # flake8-bandit
+    "SIM", # flake8-simplify
+    "UP",  # pyupgrade
+    "W",   # pycodestyle[warning]
+]
+ignore = [
+    "S101",  # assert used in tests
+    "B008",  # typer.Option in function defaults — intended pattern
+    "S314",  # XML parsing — iterparse on trusted local data
+    "E501",  # line too long — SQL and HTML literals
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.bumpversion]
+current_version = "0.1.0"
+commit = true
+tag = true
+tag_name = "v{new_version}"
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+
+[[tool.bumpversion.files]]
+filename = "src/vitalog/__main__.py"
+search = '__version__ = "{current_version}"'
+replace = '__version__ = "{new_version}"'
+
+
+[tool.pytest.ini_options]
+addopts = [
+    "--cov=vitalog",
+    "--cov-branch",
+    "--cov-report=xml",
+    "--cov-report=term-missing",
+    "--cov-fail-under=90",
+    "--strict-markers",
+    "--strict-config",
+    "--color=yes",
+    "-ra",
+]
+testpaths = ["tests"]
+log_cli = true
+
+[tool.coverage.report]
+exclude_also = ["if __name__ == .__main__.:"]
+omit = [
+    # Dashboard template rendering requires a live DuckDB with real data
+    "*/vitalog/dashboard/render.py",
+    "*/vitalog/dashboard/maps.py",
+    # Narrative generation calls external Claude API
+    "*/vitalog/narrative/generate.py",
+]
+
+[tool.coverage.run]
+source = ["vitalog"]
+
+[tool.tox]
+required = ["tox-uv"]
+env_list = ["py310", "py311", "py312", "py313", "py314"]
+skip_missing_interpreters = true
+isolated_build = true
+basepython = "python3.13"
+
+[tool.tox.env_run_base]
+description = "Run tests under {base_python}"
+extras = ["dev"]
+commands = [["pytest", "{posargs}"]]
+
+[tool.typos.default.extend-words]
+# "mi" is used throughout as abbreviation for miles
+mi = "mi"
