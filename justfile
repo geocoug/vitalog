@@ -70,12 +70,24 @@ bump:
 
 # Bump patch version (e.g. 0.1.0 → 0.1.1)
 bump-patch:
-    uv run bump-my-version bump patch
+    uv run bump-my-version bump patch --no-commit --no-tag
+    uv lock
+    git add pyproject.toml src/vitalog/__main__.py uv.lock
+    git commit -m "Bump version: $(uv run bump-my-version show current_version)"
+    git tag "v$(uv run bump-my-version show current_version)"
 
 # Bump minor version (e.g. 0.1.0 → 0.2.0)
 bump-minor:
-    uv run bump-my-version bump minor
+    uv run bump-my-version bump minor --no-commit --no-tag
+    uv lock
+    git add pyproject.toml src/vitalog/__main__.py uv.lock
+    git commit -m "Bump version: $(uv run bump-my-version show current_version)"
+    git tag "v$(uv run bump-my-version show current_version)"
 
 # Bump major version (e.g. 0.1.0 → 1.0.0)
 bump-major:
-    uv run bump-my-version bump major
+    uv run bump-my-version bump major --no-commit --no-tag
+    uv lock
+    git add pyproject.toml src/vitalog/__main__.py uv.lock
+    git commit -m "Bump version: $(uv run bump-my-version show current_version)"
+    git tag "v$(uv run bump-my-version show current_version)"
