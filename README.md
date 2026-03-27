@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.svg" alt="Vitalog" width="400">
+  <img src="https://github.com/geocoug/vitalog/raw/main/logo.svg" alt="Vitalog" width="400">
 </p>
 
 <p align="center">
