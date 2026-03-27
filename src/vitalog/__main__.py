@@ -13,7 +13,7 @@ from vitalog.console import get_console
 from vitalog.db import connect, init_schema
 from vitalog.logging import configure_logging
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 app = typer.Typer(add_completion=False, help="Vitalog: health data CLI.")
 load_app = typer.Typer(help="Load health data into DuckDB.")
